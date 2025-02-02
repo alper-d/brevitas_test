@@ -54,7 +54,9 @@ if __name__ == "__main__":
     x = model.graph.initializer
     showInNetron(path)
     model = get_test_model_trained("CNV", 1, 1)
-    prune_brevitas_model(model, )
+    prune_brevitas_model(
+        model,
+    )
     for i, node in enumerate(model.graph.node):
         if not node.op_type == "Conv":
             continue

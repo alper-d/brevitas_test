@@ -19,42 +19,88 @@ import math
 import torch_pruning as tp
 from torch_pruning import utils
 
-def prune_brevitas_model(model, conv_feature_index=8, pruning_amount=0.5):
-    if True:
-        channels_to_prune = math.floor(model.conv_features[conv_feature_index].in_channels * pruning_amount)
-        example_inputs = torch.randn(1, 3, 32, 32)
-        dep_graph = tp.DependencyGraph().build_dependency(model, example_inputs=example_inputs)
-        sorting_indices = list(model.conv_features[conv_feature_index].weight.sum([0,2,3]).argsort()[:channels_to_prune])
-        group = dep_graph.get_pruning_group(model.conv_features[conv_feature_index], tp.prune_conv_in_channels, idxs=sorting_indices)
-        #group2 = dep_graph.get_pruning_group(model.conv_features[15], tp.prune_conv_in_channels, idxs=[0])
-        #print(group.details())
-        for i in range(channels_to_prune):
-            if dep_graph:
-                group.prune()
-        #utils.draw_groups(dep_graph, 'groups')
-        #utils.draw_dependency_graph(dep_graph, 'dep_graph')
-        #utils.draw_computational_graph(dep_graph,'comp_graph')
-        return
-        importance = tp.importance.GroupNormImportance(p=2, group_reduction="first")
-        pruner = tp.pruner.GroupNormPruner(
-            model,
-            example_inputs=example_inputs,
-            importance=importance,
-            iterative_steps=1,
-            pruning_ratio=0.0,
-            global_pruning=False,
-            round_to=8,
-            pruning_ratio_dict={model.conv_features[1]: 0.1},
-            root_module_types=[QuantConv2d],
-            unwrapped_parameters=[[model.conv_features[1].weight, 0]]
-            #customized_pruners={QuantConv2d: tp.pruner.prune_conv_in_channels}
-        )
-        pruner.d
-        for g in pruner.step(interactive=True):
-            g.prune()
-        if isinstance(pruner, (tp.pruner.BNScalePruner, tp.pruner.GroupNormPruner, tp.pruner.GrowingRegPruner)):
-            pruner.update_regularizer()  # if the model has been pruned, we need to update the regularizer
-            pruner.regularize(model)
+
+def prune_brevitas_modelSIMD(
+    model,
+    conv_feature_index=8,
+    SIMD_in=1,
+    SIMD_out=1,
+):
+    assert (
+        model.conv_features[conv_feature_index].in_channels % SIMD_in == 0
+    ), "SIMD must divide IFM Channels"
+    # channels_to_prune = math.floor(model.conv_features[conv_feature_index].in_channels * pruning_amount)
+    channels_to_prune = [
+        i if i % SIMD_in < SIMD_out else -1 for i in range(model.conv_features[conv_feature_index].in_channels)
+    ]
+    channels_to_prune = list(filter(lambda x: x > -1, channels_to_prune))
+    example_inputs = torch.randn(1, 3, 32, 32)
+    dep_graph = tp.DependencyGraph().build_dependency(
+        model, example_inputs=example_inputs
+    )
+    group = dep_graph.get_pruning_group(
+        model.conv_features[conv_feature_index],
+        tp.prune_conv_in_channels,
+        idxs=channels_to_prune,
+    )
+    if dep_graph:
+        group.prune()
+    return
+
+
+def prune_brevitas_model(
+    model, conv_feature_index=8, SIMD=1, NumColPruned=1
+):
+    assert (
+        model.conv_features[conv_feature_index].in_channels % SIMD == 0
+    ), "SIMD must divide IFM Channels"
+    # channels_to_prune = math.floor(model.conv_features[conv_feature_index].in_channels * pruning_amount)
+    channels_to_prune = [i for i in range(SIMD * NumColPruned)]
+    example_inputs = torch.randn(1, 3, 32, 32)
+    dep_graph = tp.DependencyGraph().build_dependency(
+        model, example_inputs=example_inputs
+    )
+    group = dep_graph.get_pruning_group(
+        model.conv_features[conv_feature_index],
+        tp.prune_conv_in_channels,
+        idxs=channels_to_prune,
+    )
+    # group2 = dep_graph.get_pruning_group(model.conv_features[15], tp.prune_conv_in_channels, idxs=[0])
+    # print(group.details())
+    if dep_graph:
+        group.prune()
+    # utils.draw_groups(dep_graph, 'groups')
+    # utils.draw_dependency_graph(dep_graph, 'dep_graph')
+    # utils.draw_computational_graph(dep_graph,'comp_graph')
+    return
+    importance = tp.importance.GroupNormImportance(p=2, group_reduction="first")
+    pruner = tp.pruner.GroupNormPruner(
+        model,
+        example_inputs=example_inputs,
+        importance=importance,
+        iterative_steps=1,
+        pruning_ratio=0.0,
+        global_pruning=False,
+        round_to=8,
+        pruning_ratio_dict={model.conv_features[1]: 0.1},
+        root_module_types=[QuantConv2d],
+        unwrapped_parameters=[[model.conv_features[1].weight, 0]],
+        # customized_pruners={QuantConv2d: tp.pruner.prune_conv_in_channels}
+    )
+
+    for g in pruner.step(interactive=True):
+        g.prune()
+    if isinstance(
+        pruner,
+        (
+            tp.pruner.BNScalePruner,
+            tp.pruner.GroupNormPruner,
+            tp.pruner.GrowingRegPruner,
+        ),
+    ):
+        pruner.update_regularizer()  # if the model has been pruned, we need to update the regularizer
+        pruner.regularize(model)
+
 
 example_map = {
     ("CNV", 1, 1): bnn_pynq.cnv_1w1a,
@@ -70,6 +116,8 @@ example_map = {
     ("TFC", 2, 2): bnn_pynq.tfc_2w2a,
     ("mobilenet", 4, 4): imagenet_classification.quant_mobilenet_v1_4b,
 }
+
+
 def get_test_model(netname, wbits, abits, pretrained):
     """Returns the model specified by input arguments from the Brevitas BNN-PYNQ
     test networks. Pretrained weights loaded if pretrained is True."""
@@ -82,6 +130,7 @@ def get_test_model(netname, wbits, abits, pretrained):
 def get_test_model_trained(netname, wbits, abits):
     "get_test_model with pretrained=True"
     return get_test_model(netname, wbits, abits, pretrained=True)
+
 
 class CommonQuant(Injector):
     bit_width_impl_type = BitWidthImplType.CONST
@@ -108,15 +157,26 @@ class CommonWeightQuant(CommonQuant):
 class CommonActQuant(CommonQuant):
     min_val = -1.0
     max_val = 1.0
+
+
 # from .tensor_norm import TensorNorm
 # from .common import CommonWeightQuant, CommonActQuant
 
-CNV_OUT_CH_POOL = [(64, False), (64, True), (128, False), (128, True), (256, False), (256, False)]
+CNV_OUT_CH_POOL = [
+    (64, False),
+    (64, True),
+    (128, False),
+    (128, True),
+    (256, False),
+    (256, False),
+]
 INTERMEDIATE_FC_FEATURES = [(256, 512), (512, 512)]
 LAST_FC_IN_FEATURES = 512
 LAST_FC_PER_OUT_CH_SCALING = False
 POOL_SIZE = 2
 KERNEL_SIZE = 3
+
+
 class TensorNorm(nn.Module):
     def __init__(self, eps=1e-4, momentum=0.1):
         super().__init__()
@@ -125,8 +185,8 @@ class TensorNorm(nn.Module):
         self.momentum = momentum
         self.weight = nn.Parameter(torch.rand(1))
         self.bias = nn.Parameter(torch.rand(1))
-        self.register_buffer('running_mean', torch.zeros(1))
-        self.register_buffer('running_var', torch.ones(1))
+        self.register_buffer("running_mean", torch.zeros(1))
+        self.register_buffer("running_var", torch.ones(1))
         self.reset_running_stats()
 
     def reset_running_stats(self):
@@ -140,63 +200,83 @@ class TensorNorm(nn.Module):
             mean = x.mean()
             unbias_var = x.var(unbiased=True)
             biased_var = x.var(unbiased=False)
-            self.running_mean = (1 - self.momentum) * self.running_mean + self.momentum * mean.detach()
-            self.running_var = (1 - self.momentum) * self.running_var + self.momentum * unbias_var.detach()
+            self.running_mean = (
+                1 - self.momentum
+            ) * self.running_mean + self.momentum * mean.detach()
+            self.running_var = (
+                1 - self.momentum
+            ) * self.running_var + self.momentum * unbias_var.detach()
             inv_std = 1 / (biased_var + self.eps).pow(0.5)
             return (x - mean) * inv_std * self.weight + self.bias
         else:
-            return ((x - self.running_mean) / (self.running_var + self.eps).pow(0.5)) * self.weight + self.bias
+            return (
+                (x - self.running_mean) / (self.running_var + self.eps).pow(0.5)
+            ) * self.weight + self.bias
+
 
 class CNV(Module):
-
-    def __init__(self, num_classes, weight_bit_width, act_bit_width, in_bit_width, in_ch):
+    def __init__(
+        self, num_classes, weight_bit_width, act_bit_width, in_bit_width, in_ch
+    ):
         super(CNV, self).__init__()
 
         self.conv_features = ModuleList()
         self.linear_features = ModuleList()
 
-        self.conv_features.append(QuantIdentity(  # for Q1.7 input format
-            act_quant=CommonActQuant,
-            bit_width=in_bit_width,
-            min_val=- 1.0,
-            max_val=1.0 - 2.0 ** (-7),
-            narrow_range=False,
-            restrict_scaling_type=RestrictValueType.POWER_OF_TWO))
+        self.conv_features.append(
+            QuantIdentity(  # for Q1.7 input format
+                act_quant=CommonActQuant,
+                bit_width=in_bit_width,
+                min_val=-1.0,
+                max_val=1.0 - 2.0 ** (-7),
+                narrow_range=False,
+                restrict_scaling_type=RestrictValueType.POWER_OF_TWO,
+            )
+        )
 
         for out_ch, is_pool_enabled in CNV_OUT_CH_POOL:
-            self.conv_features.append(QuantConv2d(
-                kernel_size=KERNEL_SIZE,
-                in_channels=in_ch,
-                out_channels=out_ch,
-                bias=False,
-                weight_quant=CommonWeightQuant,
-                weight_bit_width=weight_bit_width))
+            self.conv_features.append(
+                QuantConv2d(
+                    kernel_size=KERNEL_SIZE,
+                    in_channels=in_ch,
+                    out_channels=out_ch,
+                    bias=False,
+                    weight_quant=CommonWeightQuant,
+                    weight_bit_width=weight_bit_width,
+                )
+            )
             in_ch = out_ch
             self.conv_features.append(BatchNorm2d(in_ch, eps=1e-4))
-            self.conv_features.append(QuantIdentity(
-                act_quant=CommonActQuant,
-                bit_width=act_bit_width))
+            self.conv_features.append(
+                QuantIdentity(act_quant=CommonActQuant, bit_width=act_bit_width)
+            )
             if is_pool_enabled:
                 self.conv_features.append(MaxPool2d(kernel_size=2))
 
         for in_features, out_features in INTERMEDIATE_FC_FEATURES:
-            self.linear_features.append(QuantLinear(
-                in_features=in_features,
-                out_features=out_features,
+            self.linear_features.append(
+                QuantLinear(
+                    in_features=in_features,
+                    out_features=out_features,
+                    bias=False,
+                    weight_quant=CommonWeightQuant,
+                    weight_bit_width=weight_bit_width,
+                )
+            )
+            self.linear_features.append(BatchNorm1d(out_features, eps=1e-4))
+            self.linear_features.append(
+                QuantIdentity(act_quant=CommonActQuant, bit_width=act_bit_width)
+            )
+
+        self.linear_features.append(
+            QuantLinear(
+                in_features=LAST_FC_IN_FEATURES,
+                out_features=num_classes,
                 bias=False,
                 weight_quant=CommonWeightQuant,
-                weight_bit_width=weight_bit_width))
-            self.linear_features.append(BatchNorm1d(out_features, eps=1e-4))
-            self.linear_features.append(QuantIdentity(
-                act_quant=CommonActQuant,
-                bit_width=act_bit_width))
-
-        self.linear_features.append(QuantLinear(
-            in_features=LAST_FC_IN_FEATURES,
-            out_features=num_classes,
-            bias=False,
-            weight_quant=CommonWeightQuant,
-            weight_bit_width=weight_bit_width))
+                weight_bit_width=weight_bit_width,
+            )
+        )
         self.linear_features.append(TensorNorm())
 
         for m in self.modules():
@@ -220,6 +300,7 @@ class CNV(Module):
             x = mod(x)
         return x
 
+
 class TrainingEpochMeters(object):
     def __init__(self):
         self.batch_time = AverageMeter()
@@ -227,6 +308,7 @@ class TrainingEpochMeters(object):
         self.losses = AverageMeter()
         self.top1 = AverageMeter()
         self.top5 = AverageMeter()
+
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
@@ -246,21 +328,22 @@ class AverageMeter(object):
         self.count += n
         self.avg = self.sum / self.count
 
+
 class squared_hinge_loss(Function):
     @staticmethod
     def forward(ctx, predictions, targets):
         ctx.save_for_backward(predictions, targets)
-        output = 1. - predictions.mul(targets)
-        output[output.le(0.)] = 0.
+        output = 1.0 - predictions.mul(targets)
+        output[output.le(0.0)] = 0.0
         loss = torch.mean(output.mul(output))
         return loss
 
     @staticmethod
     def backward(ctx, grad_output):
         predictions, targets = ctx.saved_tensors
-        output = 1. - predictions.mul(targets)
-        output[output.le(0.)] = 0.
-        grad_output.resize_as_(predictions).copy_(targets).mul_(-2.).mul_(output)
+        output = 1.0 - predictions.mul(targets)
+        output[output.le(0.0)] = 0.0
+        grad_output.resize_as_(predictions).copy_(targets).mul_(-2.0).mul_(output)
         grad_output.mul_(output.ne(0).float())
         grad_output.div_(predictions.numel())
         return grad_output, None
@@ -274,12 +357,13 @@ class SqrHingeLoss(nn.Module):
     def forward(self, input, target):
         return squared_hinge_loss.apply(input, target)
 
+
 def accuracy(output, target, topk=(1,)):
     """Computes the precision@k for the specified values of k"""
     maxk = max(topk)
     batch_size = target.size(0)
 
-    #return indices of larges k values
+    # return indices of larges k values
     _, pred = output.topk(maxk, 1, True, True)
     pred = pred.t()
     correct = pred.eq(target.view(1, -1).expand_as(pred))
@@ -299,6 +383,7 @@ class EvalEpochMeters(object):
         self.top1 = AverageMeter()
         self.top5 = AverageMeter()
 
+
 def eval_model(model, criterion, test_loader, num_classes=10, epoch=-1, device="cpu"):
     eval_meters = EvalEpochMeters()
 
@@ -308,7 +393,6 @@ def eval_model(model, criterion, test_loader, num_classes=10, epoch=-1, device="
     save_data_list = []
 
     for i, data in enumerate(test_loader):
-
         end = time.time()
         (inp, target) = data
 
@@ -317,9 +401,10 @@ def eval_model(model, criterion, test_loader, num_classes=10, epoch=-1, device="
 
         # for hingeloss only
         if isinstance(criterion, SqrHingeLoss):
-
             target = target.unsqueeze(1)
-            target_onehot = torch.Tensor(target.size(0), num_classes).to(device, non_blocking=True)
+            target_onehot = torch.Tensor(target.size(0), num_classes).to(
+                device, non_blocking=True
+            )
             target_onehot.fill_(-1)
             target_onehot.scatter_(1, target, 1)
             target = target.squeeze()
@@ -340,7 +425,7 @@ def eval_model(model, criterion, test_loader, num_classes=10, epoch=-1, device="
 
         pred = output.data.argmax(1, keepdim=True)
         correct = pred.eq(target.data.view_as(pred)).sum()
-        prec1 = 100. * correct.float() / inp.size(0)
+        prec1 = 100.0 * correct.float() / inp.size(0)
 
         _, prec5 = accuracy(output, target, topk=(1, 5))
         eval_meters.losses.update(loss.item(), inp.size(0))
@@ -352,6 +437,7 @@ def eval_model(model, criterion, test_loader, num_classes=10, epoch=-1, device="
         save_data_list.append(save_data)
 
     return eval_meters.top1.avg, save_data_list
+
 
 network = "cnv"
 experiments = "."

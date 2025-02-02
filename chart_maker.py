@@ -16,22 +16,22 @@ for ratio in pruning_amounts:
     train_logs.append(train_temp)
     test_logs.append(test_temp)
 
-#plt.figure(figsize=(8, 5))  # Set figure size
-#for i, ratio in enumerate(pruning_amounts):
+# plt.figure(figsize=(8, 5))  # Set figure size
+# for i, ratio in enumerate(pruning_amounts):
 #    plt.plot(train_logs[i], label=f"Ratio={ratio}")
 #
 ## Add labels and title
-#plt.title("Train")
-#plt.xlabel("Epoch")
-#plt.ylabel("Accuracy")
+# plt.title("Train")
+# plt.xlabel("Epoch")
+# plt.ylabel("Accuracy")
 #
 ## Add grid and legend
-#plt.grid(True, linestyle='--', alpha=0.5)
-#plt.legend()
+# plt.grid(True, linestyle='--', alpha=0.5)
+# plt.legend()
 #
 ## Show the plot
-#plt.show()
-#plt.savefig()
+# plt.show()
+# plt.savefig()
 
 plt.figure(figsize=(8, 5))  # Set figure size
 for i, ratio in enumerate(pruning_amounts):
@@ -43,7 +43,7 @@ plt.xlabel("Epoch")
 plt.ylabel("Accuracy")
 
 # Add grid and legend
-plt.grid(True, linestyle='--', alpha=0.5)
+plt.grid(True, linestyle="--", alpha=0.5)
 plt.legend()
 
 # Show the plot
