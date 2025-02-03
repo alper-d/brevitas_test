@@ -49,11 +49,14 @@ def prune_brevitas_modelSIMD(
 
 
 def prune_brevitas_model(
-    model, conv_feature_index=8, SIMD=1, NumColPruned=1
+    model, conv_feature_index=8, SIMD=1, NumColPruned=-1
 ):
+    in_channels = model.conv_features[conv_feature_index].in_channels
     assert (
-        model.conv_features[conv_feature_index].in_channels % SIMD == 0
+        in_channels % SIMD == 0
     ), "SIMD must divide IFM Channels"
+    if isinstance(NumColPruned, float):
+        NumColPruned = int(round((in_channels / SIMD) * NumColPruned))
     # channels_to_prune = math.floor(model.conv_features[conv_feature_index].in_channels * pruning_amount)
     channels_to_prune = [i for i in range(SIMD * NumColPruned)]
     example_inputs = torch.randn(1, 3, 32, 32)
