@@ -26,12 +26,13 @@ def prune_brevitas_modelSIMD(
     SIMD_in=1,
     SIMD_out=1,
 ):
+    in_channels = model.conv_features[conv_feature_index].in_channels
     assert (
-        model.conv_features[conv_feature_index].in_channels % SIMD_in == 0
+        in_channels % SIMD_in == 0
     ), "SIMD must divide IFM Channels"
     # channels_to_prune = math.floor(model.conv_features[conv_feature_index].in_channels * pruning_amount)
     channels_to_prune = [
-        i if i % SIMD_in < SIMD_out else -1 for i in range(model.conv_features[conv_feature_index].in_channels)
+        i if i % SIMD_in < SIMD_out else -1 for i in range(in_channels)
     ]
     channels_to_prune = list(filter(lambda x: x > -1, channels_to_prune))
     example_inputs = torch.randn(1, 3, 32, 32)

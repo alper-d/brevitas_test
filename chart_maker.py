@@ -1,6 +1,8 @@
 import matplotlib.pyplot as plt
 
-pruning_amounts = ["0.3", "0.5", "0.6", "0.7", "0.8", "0.9"]
+#pruning_amounts = ["0.3", "0.5", "0.6", "0.7", "0.8", "0.9"]
+pruning_amounts = ["0.3", "0.5", "0.7", "0.9"]
+
 train_logs = []
 test_logs = []
 for ratio in pruning_amounts:
