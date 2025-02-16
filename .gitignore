@@ -3,3 +3,4 @@
 /.idea
 /data
 **/pruning_logs_*.txt
+run*
