@@ -16,6 +16,7 @@ from imports import (
     eval_model,
 )
 import torch.nn as nn
+from models_folder.models.CNV import cnv
 import datetime
 from main import showInNetron
 from qonnx.core.modelwrapper import ModelWrapper
@@ -25,9 +26,11 @@ from brevitas.export import export_qonnx
 from torchvision.datasets import MNIST, CIFAR10
 from imports import get_test_model_trained
 import argparse
+#from extend_model import identify_adder_nodes
 import netron
 from IPython.display import IFrame
 import onnx.numpy_helper as numpy_helper
+from onnx2torch import convert
 
 
 def get_argparser():
@@ -64,13 +67,20 @@ transform_train = transforms.Compose(train_transforms_list)
 builder = CIFAR10
 
 export_onnx_path = build_dir + "/end2end_cnv_w1a1_export_to_download.onnx"
+export_onnx_path2 = build_dir + "/checkpoint.tar"
 showInNetron(export_onnx_path)
 model = ModelWrapper(export_onnx_path)
-model = get_test_model_trained("CNV", 1, 1)
+model2 = get_test_model_trained("CNV", 1, 1)
+model = cnv("cnv_1w1a")
+package = torch.load(export_onnx_path2, map_location='cpu')
+model_state_dict = package['state_dict']
+model.load_state_dict(model_state_dict)
 prune_brevitas_model(model, conv_feature_index=8, SIMD=32,NumColPruned=pruning_amount)
 prune_brevitas_model(model, conv_feature_index=11, SIMD=32,NumColPruned=pruning_amount)
-prune_brevitas_model(model, conv_feature_index=15, SIMD=32,NumColPruned=pruning_amount)
-prune_brevitas_model(model, conv_feature_index=18, SIMD=32,NumColPruned=pruning_amount)
+prune_brevitas_model(model, conv_feature_index=17, SIMD=32,NumColPruned=pruning_amount)
+prune_brevitas_model(model, conv_feature_index=20, SIMD=32,NumColPruned=pruning_amount)
+prune_brevitas_model(model, conv_feature_index=23, SIMD=32,NumColPruned=pruning_amount)
+prune_brevitas_model(model, conv_feature_index=26, SIMD=32,NumColPruned=pruning_amount)
 # model = CNV(10, WEIGHT_BIT_WIDTH, ACT_BIT_WIDTH, 8, 3).to(device=device)
 eval_meters = EvalEpochMeters()
 train_set = builder(root=datadir, train=True, download=True, transform=transform_train)
