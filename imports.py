@@ -27,9 +27,7 @@ def prune_brevitas_modelSIMD(
     SIMD_out=1,
 ):
     in_channels = model.conv_features[conv_feature_index].in_channels
-    assert (
-        in_channels % SIMD_in == 0
-    ), "SIMD must divide IFM Channels"
+    assert in_channels % SIMD_in == 0, "SIMD must divide IFM Channels"
     # channels_to_prune = math.floor(model.conv_features[conv_feature_index].in_channels * pruning_amount)
     channels_to_prune = [
         i if i % SIMD_in < SIMD_out else -1 for i in range(in_channels)
@@ -49,17 +47,16 @@ def prune_brevitas_modelSIMD(
     return
 
 
-def prune_brevitas_model(
-    model, conv_feature_index=8, SIMD=1, NumColPruned=-1
-):
+def prune_brevitas_model(model, conv_feature_index=8, SIMD=1, NumColPruned=-1):
     in_channels = model.conv_features[conv_feature_index].in_channels
-    assert (
-        in_channels % SIMD == 0
-    ), "SIMD must divide IFM Channels"
+    assert in_channels % SIMD == 0, "SIMD must divide IFM Channels"
     if isinstance(NumColPruned, float):
         NumColPruned = int(round((in_channels / SIMD) * NumColPruned))
     # channels_to_prune = math.floor(model.conv_features[conv_feature_index].in_channels * pruning_amount)
-    channels_to_prune = [i for i in range(SIMD * NumColPruned)]
+    prune_block_len = SIMD * NumColPruned
+    if SIMD * NumColPruned >= in_channels:
+        prune_block_len = in_channels - SIMD
+    channels_to_prune = [i for i in range(prune_block_len)]
     example_inputs = torch.randn(1, 3, 32, 32)
     dep_graph = tp.DependencyGraph().build_dependency(
         model, example_inputs=example_inputs
