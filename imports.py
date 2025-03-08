@@ -51,7 +51,8 @@ def prune_brevitas_modelSIMD(
         group.prune()
     return
 
-def prune_all_conv_layers(model, SIMD=1, NumColPruned=-1):
+
+def prune_all_conv_layers(model, SIMD=1, NumColPruned=-1, pruning_mode="structured"):
 
     for i, layer in enumerate(model.conv_features):
         if isinstance(layer, QuantConv2d):
@@ -60,7 +61,10 @@ def prune_all_conv_layers(model, SIMD=1, NumColPruned=-1):
                 assert in_channels % SIMD == 0, f"SIMD must divide IFM Channels. Pruning {layer} is skipped."
             except AssertionError as e:
                 continue
-            prune_brevitas_modelSIMD(model, conv_feature_index=i, SIMD_in=SIMD, NumColPruned=NumColPruned)
+            if pruning_mode == "structured":
+                prune_brevitas_model(model, conv_feature_index=i, SIMD=SIMD, NumColPruned=NumColPruned)
+            else:
+                prune_brevitas_modelSIMD(model, conv_feature_index=i, SIMD_in=SIMD, NumColPruned=NumColPruned)
 
 
 def prune_brevitas_model(model, conv_feature_index=8, SIMD=1, NumColPruned=-1):

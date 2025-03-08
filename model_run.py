@@ -38,13 +38,14 @@ def get_argparser():
     argparser = argparse.ArgumentParser(description="put parameters")
     argparser.add_argument("--pruning_amount", type=float, default=0.9, help="")
     argparser.add_argument("--run_netron", type=bool, default=False, help="")
+    argparser.add_argument("--pruning_mode", type=str, default="structured", choices=["structured", "SIMD"])
     return argparser.parse_args()
 
 
 argparser = get_argparser()
 pruning_amount = argparser.pruning_amount
 run_netron = argparser.run_netron
-
+pruning_mode = argparser.pruning_mode
 
 build_dir = "models_folder"
 
@@ -53,7 +54,7 @@ epoch_data["train"][str(pruning_amount)] = []
 epoch_data["test"][str(pruning_amount)] = []
 num_classes = 10
 
-file1 = open(f"pruning_logs_{str(pruning_amount)}.txt", "a")
+file1 = open(f"pruning_logs_{str(pruning_amount)}_{pruning_mode}.txt", "a")
 now = datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y")
 file1.write(f"Starting to write at {now}\nPruning Amount: {pruning_amount}")
 file1.flush()
@@ -73,13 +74,14 @@ model.load_state_dict(model_state_dict)
 
 if run_netron:
     export_qonnx(model, args=example_inputs.cpu(), export_path="./models_folder/extended_model.onnx", opset_version=13)
-    prune_all_conv_layers(model, SIMD=32, NumColPruned=pruning_amount)
+    prune_all_conv_layers(model, SIMD=32, NumColPruned=pruning_amount, pruning_mode=pruning_mode)
     export_qonnx(model, args=example_inputs.cpu(), export_path="./models_folder/extended_model_pruned.onnx",
                  opset_version=13)
     showInNetron(export_onnx_path_extended_delete_later,port=8081)
     showInNetron(export_onnx_path_extended_pruned_delete_later, port=8080)
 else:
-    prune_all_conv_layers(model, SIMD=32, NumColPruned=pruning_amount)
+    prune_all_conv_layers(model, SIMD=32, NumColPruned=pruning_amount, pruning_mode=pruning_mode)
+
 # model = CNV(10, WEIGHT_BIT_WIDTH, ACT_BIT_WIDTH, 8, 3).to(device=device)
 eval_meters = EvalEpochMeters()
 
