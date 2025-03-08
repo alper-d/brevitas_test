@@ -1,4 +1,5 @@
 import os
+from dataloader import train_loader, test_loader
 import torch
 import time
 import torch.optim as optim
@@ -7,9 +8,11 @@ from imports import (
     TrainingEpochMeters,
     SqrHingeLoss,
     weight_decay,
+    example_inputs,
     accuracy,
     lr,
     prune_brevitas_model,
+    prune_all_conv_layers,
     prune_brevitas_modelSIMD,
     log_freq,
     EvalEpochMeters,
@@ -18,81 +21,67 @@ from imports import (
 import torch.nn as nn
 from models_folder.models.CNV import cnv
 import datetime
-from main import showInNetron
+from visualize_netron import showInNetron
 from qonnx.core.modelwrapper import ModelWrapper
-from torch.utils.data import DataLoader
-from torchvision import transforms
 from brevitas.export import export_qonnx
-from torchvision.datasets import MNIST, CIFAR10
 from imports import get_test_model_trained
 import argparse
-#from extend_model import identify_adder_nodes
+
+# from extend_model import identify_adder_nodes
 import netron
 from IPython.display import IFrame
 import onnx.numpy_helper as numpy_helper
 from onnx2torch import convert
-
+from brevitas.export import export_qonnx
 
 def get_argparser():
     argparser = argparse.ArgumentParser(description="put parameters")
-    argparser.add_argument("--pruning_amount", type=float, default=0.4, help="")
+    argparser.add_argument("--pruning_amount", type=float, default=0.9, help="")
+    argparser.add_argument("--run_netron", type=bool, default=False, help="")
     return argparser.parse_args()
 
 
 argparser = get_argparser()
 pruning_amount = argparser.pruning_amount
+run_netron = argparser.run_netron
+
 
 build_dir = "models_folder"
-datadir = "./data/"
-dataset = "CIFAR10"
+
 epoch_data = {"train": {}, "test": {}}
 epoch_data["train"][str(pruning_amount)] = []
 epoch_data["test"][str(pruning_amount)] = []
 num_classes = 10
-num_workers = 0
-batch_size = 100
+
 file1 = open(f"pruning_logs_{str(pruning_amount)}.txt", "a")
 now = datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y")
 file1.write(f"Starting to write at {now}\nPruning Amount: {pruning_amount}")
 file1.flush()
-if True or dataset == "CIFAR10":
-    pass
-transform_to_tensor = transforms.Compose([transforms.ToTensor()])
-train_transforms_list = [
-    transforms.RandomCrop(32, padding=4),
-    transforms.RandomHorizontalFlip(),
-    transforms.ToTensor(),
-]
-transform_train = transforms.Compose(train_transforms_list)
-builder = CIFAR10
+
 
 export_onnx_path = build_dir + "/end2end_cnv_w1a1_export_to_download.onnx"
 export_onnx_path2 = build_dir + "/checkpoint.tar"
-showInNetron(export_onnx_path)
+export_onnx_path_extended_delete_later = "./models_folder/extended_model.onnx"
+export_onnx_path_extended_pruned_delete_later = "./models_folder/extended_model_pruned.onnx"
+
 model = ModelWrapper(export_onnx_path)
 model2 = get_test_model_trained("CNV", 1, 1)
 model = cnv("cnv_1w1a")
-package = torch.load(export_onnx_path2, map_location='cpu')
-model_state_dict = package['state_dict']
+package = torch.load(export_onnx_path2, map_location="cpu")
+model_state_dict = package["state_dict"]
 model.load_state_dict(model_state_dict)
-prune_brevitas_model(model, conv_feature_index=8, SIMD=32,NumColPruned=pruning_amount)
-prune_brevitas_model(model, conv_feature_index=11, SIMD=32,NumColPruned=pruning_amount)
-prune_brevitas_model(model, conv_feature_index=17, SIMD=32,NumColPruned=pruning_amount)
-prune_brevitas_model(model, conv_feature_index=20, SIMD=32,NumColPruned=pruning_amount)
-prune_brevitas_model(model, conv_feature_index=23, SIMD=32,NumColPruned=pruning_amount)
-prune_brevitas_model(model, conv_feature_index=26, SIMD=32,NumColPruned=pruning_amount)
+
+if run_netron:
+    export_qonnx(model, args=example_inputs.cpu(), export_path="./models_folder/extended_model.onnx", opset_version=13)
+    prune_all_conv_layers(model, SIMD=32, NumColPruned=pruning_amount)
+    export_qonnx(model, args=example_inputs.cpu(), export_path="./models_folder/extended_model_pruned.onnx",
+                 opset_version=13)
+    showInNetron(export_onnx_path_extended_delete_later,port=8081)
+    showInNetron(export_onnx_path_extended_pruned_delete_later, port=8080)
+else:
+    prune_all_conv_layers(model, SIMD=32, NumColPruned=pruning_amount)
 # model = CNV(10, WEIGHT_BIT_WIDTH, ACT_BIT_WIDTH, 8, 3).to(device=device)
 eval_meters = EvalEpochMeters()
-train_set = builder(root=datadir, train=True, download=True, transform=transform_train)
-test_set = builder(
-    root=datadir, train=False, download=True, transform=transform_to_tensor
-)
-train_loader = DataLoader(
-    train_set, batch_size=batch_size, shuffle=True, num_workers=num_workers
-)
-test_loader = DataLoader(
-    test_set, batch_size=batch_size, shuffle=False, num_workers=num_workers
-)
 
 criterion = SqrHingeLoss()
 optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)

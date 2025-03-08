@@ -19,21 +19,26 @@ import math
 import torch_pruning as tp
 from torch_pruning import utils
 
+example_inputs = torch.randn(1, 3, 32, 32)
 
 def prune_brevitas_modelSIMD(
     model,
     conv_feature_index=8,
     SIMD_in=1,
-    SIMD_out=1,
+    NumColPruned=-1
 ):
+    SIMD_out = -1
     in_channels = model.conv_features[conv_feature_index].in_channels
     assert in_channels % SIMD_in == 0, "SIMD must divide IFM Channels"
+    if isinstance(NumColPruned, float):
+        SIMD_out = int(round(SIMD_in * NumColPruned))
+    if SIMD_out == 0:
+        SIMD_out = 1
     # channels_to_prune = math.floor(model.conv_features[conv_feature_index].in_channels * pruning_amount)
     channels_to_prune = [
         i if i % SIMD_in < SIMD_out else -1 for i in range(in_channels)
     ]
     channels_to_prune = list(filter(lambda x: x > -1, channels_to_prune))
-    example_inputs = torch.randn(1, 3, 32, 32)
     dep_graph = tp.DependencyGraph().build_dependency(
         model, example_inputs=example_inputs
     )
@@ -46,18 +51,26 @@ def prune_brevitas_modelSIMD(
         group.prune()
     return
 
+def prune_all_conv_layers(model, SIMD=1, NumColPruned=-1):
+
+    for i, layer in enumerate(model.conv_features):
+        if isinstance(layer, QuantConv2d):
+            in_channels = layer.in_channels
+            try:
+                assert in_channels % SIMD == 0, f"SIMD must divide IFM Channels. Pruning {layer} is skipped."
+            except AssertionError as e:
+                continue
+            prune_brevitas_modelSIMD(model, conv_feature_index=i, SIMD_in=SIMD, NumColPruned=NumColPruned)
+
 
 def prune_brevitas_model(model, conv_feature_index=8, SIMD=1, NumColPruned=-1):
     in_channels = model.conv_features[conv_feature_index].in_channels
-    assert in_channels % SIMD == 0, "SIMD must divide IFM Channels"
+    print(f"in_channels={in_channels} SIMD={SIMD}")
     if isinstance(NumColPruned, float):
         NumColPruned = int(round((in_channels / SIMD) * NumColPruned))
     # channels_to_prune = math.floor(model.conv_features[conv_feature_index].in_channels * pruning_amount)
-    prune_block_len = SIMD * NumColPruned
-    if SIMD * NumColPruned >= in_channels:
-        prune_block_len = in_channels - SIMD
+    prune_block_len = SIMD * NumColPruned if SIMD * NumColPruned <= in_channels else in_channels - SIMD
     channels_to_prune = [i for i in range(prune_block_len)]
-    example_inputs = torch.randn(1, 3, 32, 32)
     dep_graph = tp.DependencyGraph().build_dependency(
         model, example_inputs=example_inputs
     )
