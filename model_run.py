@@ -1,51 +1,28 @@
-import os
 from dataloader import train_loader, test_loader
 import torch
 import time
 import torch.optim as optim
-import qonnx.core.onnx_exec as oxe
+
+# import qonnx.core.onnx_exec as oxe
 from imports import (
     TrainingEpochMeters,
     SqrHingeLoss,
     weight_decay,
-    example_inputs,
-    accuracy,
+    #    accuracy,
     lr,
-    prune_brevitas_model,
-    prune_all_conv_layers,
-    prune_brevitas_modelSIMD,
+    prune_wrapper,
     log_freq,
     EvalEpochMeters,
     eval_model,
 )
-import torch.nn as nn
 from models_folder.models.CNV import cnv
 import datetime
-from visualize_netron import showInNetron
 from qonnx.core.modelwrapper import ModelWrapper
-from brevitas.export import export_qonnx
 from imports import get_test_model_trained
-import argparse
 
-# from extend_model import identify_adder_nodes
-import netron
-from IPython.display import IFrame
-import onnx.numpy_helper as numpy_helper
-from onnx2torch import convert
-from brevitas.export import export_qonnx
-
-def get_argparser():
-    argparser = argparse.ArgumentParser(description="put parameters")
-    argparser.add_argument("--pruning_amount", type=float, default=0.9, help="")
-    argparser.add_argument("--run_netron", type=bool, default=False, help="")
-    argparser.add_argument("--pruning_mode", type=str, default="structured", choices=["structured", "SIMD"])
-    return argparser.parse_args()
-
-
-argparser = get_argparser()
-pruning_amount = argparser.pruning_amount
-run_netron = argparser.run_netron
-pruning_mode = argparser.pruning_mode
+# import onnx.numpy_helper as numpy_helper
+# from onnx2torch import convert
+from configurations import run_netron, pruning_mode, pruning_amount
 
 build_dir = "models_folder"
 
@@ -62,8 +39,7 @@ file1.flush()
 
 export_onnx_path = build_dir + "/end2end_cnv_w1a1_export_to_download.onnx"
 export_onnx_path2 = build_dir + "/checkpoint.tar"
-export_onnx_path_extended_delete_later = "./models_folder/extended_model.onnx"
-export_onnx_path_extended_pruned_delete_later = "./models_folder/extended_model_pruned.onnx"
+
 
 model = ModelWrapper(export_onnx_path)
 model2 = get_test_model_trained("CNV", 1, 1)
@@ -72,17 +48,10 @@ package = torch.load(export_onnx_path2, map_location="cpu")
 model_state_dict = package["state_dict"]
 model.load_state_dict(model_state_dict)
 
-if run_netron:
-    export_qonnx(model, args=example_inputs.cpu(), export_path="./models_folder/extended_model.onnx", opset_version=13)
-    prune_all_conv_layers(model, SIMD=32, NumColPruned=pruning_amount, pruning_mode=pruning_mode)
-    export_qonnx(model, args=example_inputs.cpu(), export_path="./models_folder/extended_model_pruned.onnx",
-                 opset_version=13)
-    showInNetron(export_onnx_path_extended_delete_later,port=8081)
-    showInNetron(export_onnx_path_extended_pruned_delete_later, port=8080)
-else:
-    prune_all_conv_layers(model, SIMD=32, NumColPruned=pruning_amount, pruning_mode=pruning_mode)
+model = prune_wrapper(model, pruning_amount, pruning_mode, run_netron)
 
 # model = CNV(10, WEIGHT_BIT_WIDTH, ACT_BIT_WIDTH, 8, 3).to(device=device)
+
 eval_meters = EvalEpochMeters()
 
 criterion = SqrHingeLoss()
@@ -166,5 +135,4 @@ for epoch in range(starting_epoch, epochs):
     else:
         pass
         # checkpoint_best(epoch, f"checkpoint_pruning_amount-{pruning_amount:.3f}.tar")
-
-    # writing newline character
+file1.close()
