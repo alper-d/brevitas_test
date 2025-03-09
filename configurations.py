@@ -1,4 +1,7 @@
 import argparse
+import torch
+import torch.optim as optim
+from imports import SqrHingeLoss
 
 
 def get_argparser():
@@ -15,3 +18,23 @@ argparser = get_argparser()
 pruning_amount = argparser.pruning_amount
 run_netron = argparser.run_netron
 pruning_mode = argparser.pruning_mode
+
+network = "cnv"
+experiments = "."
+datadir = "./data/"
+batch_size = 100
+num_workers = 6
+lr = 0.02
+weight_decay = 0
+random_seed = 1
+log_freq = 10
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
+def get_optimizer(model):
+    criterion = SqrHingeLoss()
+    optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+
+    criterion = criterion.to(device=device)
+    return criterion, optimizer

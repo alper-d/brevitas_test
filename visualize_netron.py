@@ -2,6 +2,7 @@ import netron
 from IPython.display import IFrame
 import os
 
+
 def showInNetron(model_filename: str, localhost_url: str = None, port: int = None):
     """Shows a ONNX model file in the Jupyter Notebook using Netron.
 

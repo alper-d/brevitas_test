@@ -1,17 +1,13 @@
 from dataloader import train_loader, test_loader
 import torch
 import time
-import torch.optim as optim
 
 # import qonnx.core.onnx_exec as oxe
 from imports import (
     TrainingEpochMeters,
     SqrHingeLoss,
-    weight_decay,
     #    accuracy,
-    lr,
     prune_wrapper,
-    log_freq,
     EvalEpochMeters,
     eval_model,
 )
@@ -22,10 +18,19 @@ from imports import get_test_model_trained
 
 # import onnx.numpy_helper as numpy_helper
 # from onnx2torch import convert
-from configurations import run_netron, pruning_mode, pruning_amount
+from configurations import (
+    run_netron,
+    pruning_mode,
+    pruning_amount,
+    get_optimizer,
+    device,
+    weight_decay,
+    lr,
+    log_freq,
+)
+
 
 build_dir = "models_folder"
-
 epoch_data = {"train": {}, "test": {}}
 epoch_data["train"][str(pruning_amount)] = []
 epoch_data["test"][str(pruning_amount)] = []
@@ -53,11 +58,7 @@ model = prune_wrapper(model, pruning_amount, pruning_mode, run_netron)
 # model = CNV(10, WEIGHT_BIT_WIDTH, ACT_BIT_WIDTH, 8, 3).to(device=device)
 
 eval_meters = EvalEpochMeters()
-
-criterion = SqrHingeLoss()
-optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-criterion = criterion.to(device=device)
+criterion, optimizer = get_optimizer(model)
 starting_epoch = 1
 best_val_acc = 0
 epochs = 30
@@ -119,8 +120,8 @@ for epoch in range(starting_epoch, epochs):
         top1avg, save_data_list = eval_model(
             model, criterion, test_loader, num_classes, epoch, device
         )
-    epoch_data["test"][str(pruning_amount)].append(top1avg)
-    epoch_data["train"][str(pruning_amount)].append(eval_meters.top1.avg)
+    # epoch_data["test"][str(pruning_amount)].append(top1avg)
+    # epoch_data["train"][str(pruning_amount)].append(eval_meters.top1.avg)
     file1.write(
         f"Epoch {epoch} complete. Train  accuracy {str(eval_meters.top1.avg)}\n"
     )
