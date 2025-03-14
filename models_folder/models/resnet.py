@@ -15,14 +15,15 @@ from brevitas.quant_tensor import QuantTensor
 
 
 def make_quant_conv2d(
-        in_channels,
-        out_channels,
-        kernel_size,
-        weight_bit_width,
-        weight_quant,
-        stride=1,
-        padding=0,
-        bias=False):
+    in_channels,
+    out_channels,
+    kernel_size,
+    weight_bit_width,
+    weight_quant,
+    stride=1,
+    padding=0,
+    bias=False,
+):
     return qnn.QuantConv2d(
         in_channels=in_channels,
         out_channels=out_channels,
@@ -31,7 +32,8 @@ def make_quant_conv2d(
         padding=padding,
         bias=bias,
         weight_quant=weight_quant,
-        weight_bit_width=weight_bit_width)
+        weight_bit_width=weight_bit_width,
+    )
 
 
 class QuantBasicBlock(nn.Module):
@@ -39,18 +41,20 @@ class QuantBasicBlock(nn.Module):
     Quantized BasicBlock implementation with extra relu activations to respect FINN constraints on the sign of residual
     adds. Ok to train from scratch, but doesn't lend itself to e.g. retrain from torchvision.
     """
+
     expansion = 1
 
     def __init__(
-            self,
-            in_planes,
-            planes,
-            stride=1,
-            bias=False,
-            shared_quant_act=None,
-            act_bit_width=8,
-            weight_bit_width=8,
-            weight_quant=Int8WeightPerChannelFloat):
+        self,
+        in_planes,
+        planes,
+        stride=1,
+        bias=False,
+        shared_quant_act=None,
+        act_bit_width=8,
+        weight_bit_width=8,
+        weight_quant=Int8WeightPerChannelFloat,
+    ):
         super(QuantBasicBlock, self).__init__()
         self.conv1 = make_quant_conv2d(
             in_planes,
@@ -60,7 +64,8 @@ class QuantBasicBlock(nn.Module):
             padding=1,
             bias=bias,
             weight_bit_width=weight_bit_width,
-            weight_quant=weight_quant)
+            weight_quant=weight_quant,
+        )
         self.bn1 = nn.BatchNorm2d(planes)
         self.relu1 = qnn.QuantReLU(bit_width=act_bit_width, return_quant_tensor=True)
         self.conv2 = make_quant_conv2d(
@@ -71,7 +76,8 @@ class QuantBasicBlock(nn.Module):
             padding=1,
             bias=bias,
             weight_bit_width=weight_bit_width,
-            weight_quant=weight_quant)
+            weight_quant=weight_quant,
+        )
         self.bn2 = nn.BatchNorm2d(planes)
         self.downsample = nn.Sequential()
         if stride != 1 or in_planes != self.expansion * planes:
@@ -84,14 +90,18 @@ class QuantBasicBlock(nn.Module):
                     padding=0,
                     bias=bias,
                     weight_bit_width=weight_bit_width,
-                    weight_quant=weight_quant),
+                    weight_quant=weight_quant,
+                ),
                 nn.BatchNorm2d(self.expansion * planes),
                 # We add a ReLU activation here because FINN requires the same sign along residual adds
-                qnn.QuantReLU(bit_width=act_bit_width, return_quant_tensor=True))
+                qnn.QuantReLU(bit_width=act_bit_width, return_quant_tensor=True),
+            )
             # Redefine shared_quant_act whenever shortcut is performing downsampling
             shared_quant_act = self.downsample[-1]
         if shared_quant_act is None:
-            shared_quant_act = qnn.QuantReLU(bit_width=act_bit_width, return_quant_tensor=True)
+            shared_quant_act = qnn.QuantReLU(
+                bit_width=act_bit_width, return_quant_tensor=True
+            )
         # We add a ReLU activation here because FINN requires the same sign along residual adds
         self.relu2 = shared_quant_act
         self.relu_out = qnn.QuantReLU(return_quant_tensor=True, bit_width=act_bit_width)
@@ -110,21 +120,21 @@ class QuantBasicBlock(nn.Module):
 
 
 class QuantResNet(nn.Module):
-
     def __init__(
-            self,
-            block_impl,
-            num_blocks: List[int],
-            first_maxpool=False,
-            zero_init_residual=False,
-            num_classes=10,
-            act_bit_width=8,
-            weight_bit_width=8,
-            round_average_pool=False,
-            last_layer_bias_quant=Int32Bias,
-            weight_quant=Int8WeightPerChannelFloat,
-            first_layer_weight_quant=Int8WeightPerChannelFloat,
-            last_layer_weight_quant=Int8WeightPerTensorFloat):
+        self,
+        block_impl,
+        num_blocks: List[int],
+        first_maxpool=False,
+        zero_init_residual=False,
+        num_classes=10,
+        act_bit_width=8,
+        weight_bit_width=8,
+        round_average_pool=False,
+        last_layer_bias_quant=Int32Bias,
+        weight_quant=Int8WeightPerChannelFloat,
+        first_layer_weight_quant=Int8WeightPerChannelFloat,
+        last_layer_weight_quant=Int8WeightPerTensorFloat,
+    ):
         super(QuantResNet, self).__init__()
         self.in_planes = 64
         self.conv1 = make_quant_conv2d(
@@ -134,9 +144,12 @@ class QuantResNet(nn.Module):
             stride=1,
             padding=1,
             weight_bit_width=8,
-            weight_quant=first_layer_weight_quant)
+            weight_quant=first_layer_weight_quant,
+        )
         self.bn1 = nn.BatchNorm2d(64)
-        shared_quant_act = qnn.QuantReLU(bit_width=act_bit_width, return_quant_tensor=True)
+        shared_quant_act = qnn.QuantReLU(
+            bit_width=act_bit_width, return_quant_tensor=True
+        )
         self.relu = shared_quant_act
         # MaxPool is typically present for ImageNet but not for CIFAR10
         if first_maxpool:
@@ -145,20 +158,53 @@ class QuantResNet(nn.Module):
             self.maxpool = nn.Identity()
 
         self.layer1, shared_quant_act = self._make_layer(
-            block_impl, 64, num_blocks[0], 1, shared_quant_act, weight_bit_width, act_bit_width, weight_quant)
+            block_impl,
+            64,
+            num_blocks[0],
+            1,
+            shared_quant_act,
+            weight_bit_width,
+            act_bit_width,
+            weight_quant,
+        )
         self.layer2, shared_quant_act = self._make_layer(
-            block_impl, 128, num_blocks[1], 2, shared_quant_act, weight_bit_width, act_bit_width, weight_quant)
+            block_impl,
+            128,
+            num_blocks[1],
+            2,
+            shared_quant_act,
+            weight_bit_width,
+            act_bit_width,
+            weight_quant,
+        )
         self.layer3, shared_quant_act = self._make_layer(
-            block_impl, 256, num_blocks[2], 2, shared_quant_act, weight_bit_width, act_bit_width, weight_quant)
+            block_impl,
+            256,
+            num_blocks[2],
+            2,
+            shared_quant_act,
+            weight_bit_width,
+            act_bit_width,
+            weight_quant,
+        )
         self.layer4, _ = self._make_layer(
-            block_impl, 512, num_blocks[3], 2, shared_quant_act, weight_bit_width, act_bit_width, weight_quant)
+            block_impl,
+            512,
+            num_blocks[3],
+            2,
+            shared_quant_act,
+            weight_bit_width,
+            act_bit_width,
+            weight_quant,
+        )
 
         # Performs truncation to 8b (without rounding), which is supported in FINN
-        avgpool_float_to_int_impl_type = 'ROUND' if round_average_pool else 'FLOOR'
+        avgpool_float_to_int_impl_type = "ROUND" if round_average_pool else "FLOOR"
         self.final_pool = qnn.TruncAvgPool2d(
             kernel_size=4,
             trunc_quant=TruncTo8bit,
-            float_to_int_impl_type=avgpool_float_to_int_impl_type)
+            float_to_int_impl_type=avgpool_float_to_int_impl_type,
+        )
         # Keep last layer at 8b
         self.linear = qnn.QuantLinear(
             512 * block_impl.expansion,
@@ -166,7 +212,8 @@ class QuantResNet(nn.Module):
             weight_bit_width=8,
             bias=True,
             bias_quant=last_layer_bias_quant,
-            weight_quant=last_layer_weight_quant)
+            weight_quant=last_layer_weight_quant,
+        )
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -182,15 +229,16 @@ class QuantResNet(nn.Module):
                     nn.init.constant_(m.bn2.weight, 0)
 
     def _make_layer(
-            self,
-            block_impl,
-            planes,
-            num_blocks,
-            stride,
-            shared_quant_act,
-            weight_bit_width,
-            act_bit_width,
-            weight_quant):
+        self,
+        block_impl,
+        planes,
+        num_blocks,
+        stride,
+        shared_quant_act,
+        weight_bit_width,
+        act_bit_width,
+        weight_quant,
+    ):
         strides = [stride] + [1] * (num_blocks - 1)
         layers = []
         for stride in strides:
@@ -202,7 +250,8 @@ class QuantResNet(nn.Module):
                 shared_quant_act=shared_quant_act,
                 act_bit_width=act_bit_width,
                 weight_bit_width=weight_bit_width,
-                weight_quant=weight_quant)
+                weight_quant=weight_quant,
+            )
             layers.append(block)
             shared_quant_act = layers[-1].relu_out
             self.in_planes = planes * block_impl.expansion
@@ -223,13 +272,14 @@ class QuantResNet(nn.Module):
 
 
 def quant_resnet18(cfg) -> QuantResNet:
-    weight_bit_width = cfg.getint('QUANT', 'WEIGHT_BIT_WIDTH')
-    act_bit_width = cfg.getint('QUANT', 'ACT_BIT_WIDTH')
-    num_classes = cfg.getint('MODEL', 'NUM_CLASSES')
+    weight_bit_width = cfg.getint("QUANT", "WEIGHT_BIT_WIDTH")
+    act_bit_width = cfg.getint("QUANT", "ACT_BIT_WIDTH")
+    num_classes = cfg.getint("MODEL", "NUM_CLASSES")
     model = QuantResNet(
         block_impl=QuantBasicBlock,
         num_blocks=[2, 2, 2, 2],
         num_classes=num_classes,
         weight_bit_width=weight_bit_width,
-        act_bit_width=act_bit_width)
+        act_bit_width=act_bit_width,
+    )
     return model
