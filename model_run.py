@@ -1,3 +1,5 @@
+import os
+
 from dataloader import train_loader, test_loader
 import torch
 import time
@@ -6,7 +8,6 @@ import time
 from imports import (
     TrainingEpochMeters,
     SqrHingeLoss,
-    #    accuracy,
     prune_wrapper,
     EvalEpochMeters,
     eval_model,
@@ -24,11 +25,8 @@ from configurations import (
     pruning_amount,
     get_optimizer,
     device,
-    weight_decay,
-    lr,
     log_freq,
 )
-
 
 build_dir = "models_folder"
 epoch_data = {"train": {}, "test": {}}
@@ -36,25 +34,26 @@ epoch_data["train"][str(pruning_amount)] = []
 epoch_data["test"][str(pruning_amount)] = []
 num_classes = 10
 
-file1 = open(f"pruning_logs_{str(pruning_amount)}_{pruning_mode}.txt", "a")
-now = datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y")
-file1.write(f"Starting to write at {now}\nPruning Amount: {pruning_amount}")
+file1 = open(
+    os.path.join("runs", f"pruning_logs_{str(pruning_amount)}_{pruning_mode}.txt"), "a"
+)
+now = datetime.datetime.now().strftime("%H:%M%p on %d %B %Y")
+file1.write(
+    f"Starting to write at {now}\nPruning Amount: {pruning_amount}\nPruning Mode:{pruning_mode}"
+)
 file1.flush()
 
 
 export_onnx_path = build_dir + "/end2end_cnv_w1a1_export_to_download.onnx"
 export_onnx_path2 = build_dir + "/checkpoint.tar"
-
-
-model = ModelWrapper(export_onnx_path)
-model2 = get_test_model_trained("CNV", 1, 1)
+model_temp = ModelWrapper(export_onnx_path)
+model_temp2 = get_test_model_trained("CNV", 1, 1)
+# actual model load
 model = cnv("cnv_1w1a")
 package = torch.load(export_onnx_path2, map_location="cpu")
 model_state_dict = package["state_dict"]
 model.load_state_dict(model_state_dict)
-
 model = prune_wrapper(model, pruning_amount, pruning_mode, run_netron)
-
 # model = CNV(10, WEIGHT_BIT_WIDTH, ACT_BIT_WIDTH, 8, 3).to(device=device)
 
 eval_meters = EvalEpochMeters()
@@ -67,12 +66,11 @@ for epoch in range(starting_epoch, epochs):
     model.train()
     criterion.train()
 
-    # Init metrics
     epoch_meters = TrainingEpochMeters()
     start_data_loading = time.time()
 
     for i, data in enumerate(train_loader):
-        (input, target) = data
+        input, target = data
         input = input.to(device, non_blocking=True)
         target = target.to(device, non_blocking=True)
 
@@ -97,7 +95,6 @@ for epoch in range(starting_epoch, epochs):
         output = model(input)
         loss = criterion(output, target_var)
 
-        # compute gradient and do SGD step
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -128,8 +125,6 @@ for epoch in range(starting_epoch, epochs):
     file1.flush()
     file1.write(f"Epoch {epoch} complete. Test accuracy {str(top1avg)}\n")
     file1.flush()
-    # checkpoint
-    # Skip the actual saving as it uses up too much data
     if top1avg >= best_val_acc:
         best_val_acc = top1avg
         # checkpoint_best(epoch, f"best_pruning_amount-{pruning_amount:.3f}.tar")
