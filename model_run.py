@@ -37,9 +37,8 @@ num_classes = 10
 file1 = open(
     os.path.join("runs", f"pruning_logs_{str(pruning_amount)}_{pruning_mode}_{datetime.datetime.now().strftime('%H_%M___%d_%B_%Y')}.txt"), "a"
 )
-now = datetime.datetime.now().strftime("%H:%M%p on %d %B %Y")
 file1.write(
-    f"Starting to write at {now}\nPruning Amount: {pruning_amount}\nPruning Mode: {pruning_mode}"
+    f"Starting to write at {datetime.datetime.now().strftime('%H:%M%p on %d %B %Y')}\nPruning Amount: {pruning_amount}\nPruning Mode: {pruning_mode}"
 )
 file1.flush()
 
