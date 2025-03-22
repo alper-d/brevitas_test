@@ -1,7 +1,9 @@
+import os
+
 import torch.nn as nn
 import torch
 from torch.autograd import Function
-
+import json
 from torch.nn import Module, ModuleList, BatchNorm2d, MaxPool2d, BatchNorm1d
 
 from brevitas.nn import QuantConv2d, QuantIdentity, QuantLinear
@@ -23,38 +25,36 @@ from brevitas.export import export_qonnx
 from visualize_netron import showInNetron
 
 example_inputs = torch.randn(1, 3, 32, 32)
-export_onnx_path_extended_delete_later = "./models_folder/extended_model.onnx"
 
 
-def prune_wrapper(model, pruning_amount, pruning_mode, run_netron):
+def prune_wrapper(model, pruning_amount, pruning_mode, run_netron, folder_name):
+    os.mkdir(f"runs/run_models/{folder_name}")
+    onnx_path_extended = f"runs/run_models/{folder_name}/extended_model"
+    export_qonnx(
+        model,
+        args=example_inputs.cpu(),
+        export_path=f"{onnx_path_extended}.onnx",
+        opset_version=13,
+    )
+    pruning_data = prune_all_conv_layers(
+        model, SIMD=32, NumColPruned=pruning_amount, pruning_mode=pruning_mode
+    )
+    pruned_onnx_filename = (
+        f"{onnx_path_extended}_{str(pruning_amount).replace('.', '_')}_{pruning_mode}"
+    )
+    export_qonnx(
+        model,
+        args=example_inputs.cpu(),
+        export_path=f"{pruned_onnx_filename}.onnx",
+        opset_version=13,
+    )
     if run_netron:
-        export_qonnx(
-            model,
-            args=example_inputs.cpu(),
-            export_path=export_onnx_path_extended_delete_later,
-            opset_version=13,
-        )
-        prune_all_conv_layers(
-            model, SIMD=32, NumColPruned=pruning_amount, pruning_mode=pruning_mode
-        )
-        pruned_onnx_filename = f"extended_model_{str(pruning_amount).replace('.', '_')}_{pruning_mode}.onnx"
-        export_onnx_path_extended_pruned_delete_later = (
-            export_onnx_path_extended_delete_later.replace(
-                "extended_model.onnx", pruned_onnx_filename
-            )
-        )
-        export_qonnx(
-            model,
-            args=example_inputs.cpu(),
-            export_path=export_onnx_path_extended_pruned_delete_later,
-            opset_version=13,
-        )
-        showInNetron(export_onnx_path_extended_delete_later, port=8080)
-        showInNetron(export_onnx_path_extended_pruned_delete_later, port=8081)
-    else:
-        prune_all_conv_layers(
-            model, SIMD=32, NumColPruned=pruning_amount, pruning_mode=pruning_mode
-        )
+        showInNetron(f"{onnx_path_extended}.onnx", port=8080)
+        showInNetron(f"{pruned_onnx_filename}.onnx", port=8081)
+
+    with open(f"{pruned_onnx_filename}.json", "w") as fp:
+        fp.write(json.dumps(pruning_data, indent=4, ensure_ascii=False))
+
     return model
 
 
@@ -65,7 +65,8 @@ def conv_layer_traverse(model):
 
 
 def prune_all_conv_layers(model, SIMD=1, NumColPruned=-1, pruning_mode="structured"):
-    for layer in conv_layer_traverse(model):
+    pruning_data = []
+    for layer_idx, layer in enumerate(conv_layer_traverse(model)):
         in_channels = layer.in_channels
         try:
             assert (
@@ -74,16 +75,24 @@ def prune_all_conv_layers(model, SIMD=1, NumColPruned=-1, pruning_mode="structur
         except AssertionError:
             continue
         if pruning_mode == "structured":
-            prune_brevitas_model(
+            pruning_entities = prune_brevitas_model(
                 model, layer_to_prune=layer, SIMD=SIMD, NumColPruned=NumColPruned
             )
         else:
-            prune_brevitas_modelSIMD(
+            pruning_entities = prune_brevitas_modelSIMD(
                 model, layer_to_prune=layer, SIMD_in=SIMD, NumColPruned=NumColPruned
             )
+        pruning_data.append(
+            {
+                "pruned_layer_index": layer_idx,
+                "pruning_mode": pruning_mode,
+                "pruning_entities": pruning_entities,
+            }
+        )
+    return pruning_data
 
 
-def prune_brevitas_modelSIMD(model, layer_to_prune, SIMD_in=1, NumColPruned=-1):
+def prune_brevitas_modelSIMD(model, layer_to_prune, SIMD_in=1, NumColPruned=-1) -> dict:
     SIMD_out = -1
     in_channels = layer_to_prune.in_channels
     assert in_channels % SIMD_in == 0, "SIMD must divide IFM Channels"
@@ -106,10 +115,15 @@ def prune_brevitas_modelSIMD(model, layer_to_prune, SIMD_in=1, NumColPruned=-1):
     )
     if dep_graph:
         group.prune()
-    return
+    return {
+        "in_channels_old": in_channels,
+        "in_channels_new": layer_to_prune.in_channels,
+        "SIMD_in": SIMD_in,
+        "SIMD_out": SIMD_out,
+    }
 
 
-def prune_brevitas_model(model, layer_to_prune, SIMD=1, NumColPruned=-1):
+def prune_brevitas_model(model, layer_to_prune, SIMD=1, NumColPruned=-1) -> dict:
     in_channels = layer_to_prune.in_channels
     print(f"in_channels={in_channels} SIMD={SIMD}")
     if isinstance(NumColPruned, float):
@@ -136,7 +150,11 @@ def prune_brevitas_model(model, layer_to_prune, SIMD=1, NumColPruned=-1):
     # utils.draw_groups(dep_graph, 'groups')
     # utils.draw_dependency_graph(dep_graph, 'dep_graph')
     # utils.draw_computational_graph(dep_graph,'comp_graph')
-    return
+    return {
+        "in_channels_old": in_channels,
+        "in_channels_new": layer_to_prune.in_channels,
+    }
+
     importance = tp.importance.GroupNormImportance(p=2, group_reduction="first")
     pruner = tp.pruner.GroupNormPruner(
         model,

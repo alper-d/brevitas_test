@@ -35,14 +35,17 @@ epoch_data = {"train": {}, "test": {}}
 epoch_data["train"][str(pruning_amount)] = []
 epoch_data["test"][str(pruning_amount)] = []
 num_classes = 10
+pruning_log_identity = (
+    f"{pruning_mode}_{str(pruning_amount)}_{now_time.strftime('%d_%b_%Y__%H_%M_%S')}"
+)
 
 file1 = open(
-    f"runs/pruning_logs_{str(pruning_amount)}_{pruning_mode}_{now_time.strftime('%d_%b_%Y__%H_%M_%S')}.txt",
+    f"runs/run_logs/pruning_logs_{pruning_log_identity}.txt",
     "a",
 )
 log_to_file(
     file1,
-    f"Starting to write at {now_time.strftime('%H:%M:%S%p on %d %B %Y')}\nPruning Amount: {pruning_amount}\nPruning Mode: {pruning_mode}",
+    f"Starting to write at {now_time.strftime('%H:%M:%S%p on %d %B %Y')}\nPruning Amount: {pruning_amount}\nPruning Mode: {pruning_mode}\n\n",
 )
 
 
@@ -55,7 +58,9 @@ model = cnv("cnv_1w1a")
 package = torch.load(export_onnx_path2, map_location="cpu")
 model_state_dict = package["state_dict"]
 model.load_state_dict(model_state_dict)
-model = prune_wrapper(model, pruning_amount, pruning_mode, run_netron)
+model = prune_wrapper(
+    model, pruning_amount, pruning_mode, run_netron, pruning_log_identity
+)
 # model = CNV(10, WEIGHT_BIT_WIDTH, ACT_BIT_WIDTH, 8, 3).to(device=device)
 
 eval_meters = EvalEpochMeters()
