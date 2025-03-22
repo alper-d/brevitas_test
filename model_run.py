@@ -6,6 +6,7 @@ import time
 
 # import qonnx.core.onnx_exec as oxe
 from imports import (
+    log_to_file,
     TrainingEpochMeters,
     SqrHingeLoss,
     prune_wrapper,
@@ -28,6 +29,7 @@ from configurations import (
     log_freq,
 )
 
+now_time = datetime.datetime.now()
 build_dir = "models_folder"
 epoch_data = {"train": {}, "test": {}}
 epoch_data["train"][str(pruning_amount)] = []
@@ -35,12 +37,13 @@ epoch_data["test"][str(pruning_amount)] = []
 num_classes = 10
 
 file1 = open(
-    os.path.join("runs", f"pruning_logs_{str(pruning_amount)}_{pruning_mode}_{datetime.datetime.now().strftime('%H_%M___%d_%B_%Y')}.txt"), "a"
+    f"runs/pruning_logs_{str(pruning_amount)}_{pruning_mode}_{now_time.strftime('%d_%b_%Y__%H_%M_%S')}.txt",
+    "a",
 )
-file1.write(
-    f"Starting to write at {datetime.datetime.now().strftime('%H:%M%p on %d %B %Y')}\nPruning Amount: {pruning_amount}\nPruning Mode: {pruning_mode}"
+log_to_file(
+    file1,
+    f"Starting to write at {now_time.strftime('%H:%M:%S%p on %d %B %Y')}\nPruning Amount: {pruning_amount}\nPruning Mode: {pruning_mode}",
 )
-file1.flush()
 
 
 export_onnx_path = build_dir + "/end2end_cnv_w1a1_export_to_download.onnx"
@@ -106,8 +109,7 @@ for epoch in range(starting_epoch, epochs):
         correct = pred.eq(target.data.view_as(pred)).sum()
         prec1 = 100.0 * correct.float() / input.size(0)
         if i % int(log_freq) == 0:
-            file1.write(f"Epoch: {epoch} Batch: {i} accuracy {str(prec1)}\n")
-            file1.flush()
+            log_to_file(file1, f"Epoch: {epoch} Batch: {i} accuracy {str(prec1)}\n")
 
         eval_meters.top1.update(prec1.item(), input.size(0))
 
@@ -118,12 +120,10 @@ for epoch in range(starting_epoch, epochs):
         )
     # epoch_data["test"][str(pruning_amount)].append(top1avg)
     # epoch_data["train"][str(pruning_amount)].append(eval_meters.top1.avg)
-    file1.write(
-        f"Epoch {epoch} complete. Train  accuracy {str(eval_meters.top1.avg)}\n"
+    log_to_file(
+        file1, f"Epoch {epoch} complete. Train  accuracy {str(eval_meters.top1.avg)}\n"
     )
-    file1.flush()
-    file1.write(f"Epoch {epoch} complete. Test accuracy {str(top1avg)}\n")
-    file1.flush()
+    log_to_file(file1, f"Epoch {epoch} complete. Test accuracy {str(top1avg)}\n")
     if top1avg >= best_val_acc:
         best_val_acc = top1avg
         # checkpoint_best(epoch, f"best_pruning_amount-{pruning_amount:.3f}.tar")

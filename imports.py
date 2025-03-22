@@ -501,3 +501,8 @@ def eval_model(model, criterion, test_loader, num_classes=10, epoch=-1, device="
         save_data_list.append(save_data)
 
     return eval_meters.top1.avg, save_data_list
+
+
+def log_to_file(file, text):
+    file.write(text)
+    file.flush()
