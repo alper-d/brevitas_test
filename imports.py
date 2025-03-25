@@ -67,6 +67,7 @@ def conv_layer_traverse(model):
 def prune_all_conv_layers(model, SIMD=1, NumColPruned=-1, pruning_mode="structured"):
     pruning_data = []
     for layer_idx, layer in enumerate(conv_layer_traverse(model)):
+        SIMD = SIMD[layer_idx] if isinstance(SIMD, list) else SIMD
         in_channels = layer.in_channels
         try:
             assert (
@@ -97,12 +98,12 @@ def prune_brevitas_modelSIMD(model, layer_to_prune, SIMD_in=1, NumColPruned=-1) 
     in_channels = layer_to_prune.in_channels
     assert in_channels % SIMD_in == 0, "SIMD must divide IFM Channels"
     if isinstance(NumColPruned, float):
-        SIMD_out = int(round(SIMD_in * NumColPruned))
+        SIMD_out = int(round(SIMD_in * (1.0-NumColPruned)))
     if SIMD_out == 0:
         SIMD_out = 1
     # channels_to_prune = math.floor(model.conv_features[conv_feature_index].in_channels * pruning_amount)
     channels_to_prune = [
-        i if i % SIMD_in < SIMD_out else -1 for i in range(in_channels)
+        i if i % SIMD_in < SIMD_in-SIMD_out else -1 for i in range(in_channels)
     ]
     channels_to_prune = list(filter(lambda x: x > -1, channels_to_prune))
     dep_graph = tp.DependencyGraph().build_dependency(
@@ -115,6 +116,7 @@ def prune_brevitas_modelSIMD(model, layer_to_prune, SIMD_in=1, NumColPruned=-1) 
     )
     if dep_graph:
         group.prune()
+    print(layer_to_prune.in_channels)
     return {
         "in_channels_old": in_channels,
         "in_channels_new": layer_to_prune.in_channels,
