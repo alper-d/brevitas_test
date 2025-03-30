@@ -2,6 +2,7 @@ import argparse
 import torch
 import torch.optim as optim
 from imports import SqrHingeLoss
+import os
 
 
 def get_argparser():
@@ -14,6 +15,7 @@ def get_argparser():
     return argparser.parse_args()
 
 
+os.environ["BREVITAS_JIT"] = "1"
 argparser = get_argparser()
 pruning_amount = argparser.pruning_amount
 run_netron = argparser.run_netron
