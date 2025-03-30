@@ -7,6 +7,7 @@ import time
 # import qonnx.core.onnx_exec as oxe
 from imports import (
     log_to_file,
+    checkpoint_best,
     TrainingEpochMeters,
     SqrHingeLoss,
     prune_wrapper,
@@ -68,6 +69,10 @@ criterion, optimizer = get_optimizer(model)
 starting_epoch = 1
 best_val_acc = 0
 epochs = 30
+
+#if os.path.exists(f"runs/run_models/{pruning_log_identity}/best_checkpoint.tar"):
+#    model_dict = torch.load(f"runs/run_models/{pruning_log_identity}/best_checkpoint.tar")
+
 for epoch in range(starting_epoch, epochs):
     # Set to training mode
     model.train()
@@ -131,7 +136,10 @@ for epoch in range(starting_epoch, epochs):
     log_to_file(file1, f"Epoch {epoch} complete. Test accuracy {str(top1avg)}\n")
     if top1avg >= best_val_acc:
         best_val_acc = top1avg
-        # checkpoint_best(epoch, f"best_pruning_amount-{pruning_amount:.3f}.tar")
+        best_path = os.path.join(
+            f"runs/run_models/{pruning_log_identity}", "best_checkpoint.tar"
+        )
+        checkpoint_best(model, optimizer, epoch, best_val_acc, best_path)
     else:
         pass
         # checkpoint_best(epoch, f"checkpoint_pruning_amount-{pruning_amount:.3f}.tar")

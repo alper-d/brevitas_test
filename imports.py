@@ -185,6 +185,13 @@ def prune_brevitas_model(model, layer_to_prune, SIMD=1, NumColPruned=-1) -> dict
         pruner.update_regularizer()  # if the model has been pruned, we need to update the regularizer
         pruner.regularize(model)
 
+def checkpoint_best(best_model, optimizer, epoch, best_val_acc, best_path):
+    torch.save({
+        'state_dict': best_model.state_dict(),
+        'optim_dict': optimizer.state_dict(),
+        'epoch': epoch + 1,
+        'best_val_acc': best_val_acc,
+    }, best_path)
 
 example_map = {
     ("CNV", 1, 1): bnn_pynq.cnv_1w1a,
