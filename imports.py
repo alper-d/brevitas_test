@@ -29,6 +29,7 @@ example_inputs = torch.randn(1, 3, 32, 32)
 
 def prune_wrapper(model, pruning_amount, pruning_mode, run_netron, folder_name):
     onnx_path_extended = f"runs/{folder_name}/extended_model"
+    os.environ["BREVITAS_JIT"] = str(0)
     export_qonnx(
         model,
         args=example_inputs.cpu(),
@@ -53,7 +54,7 @@ def prune_wrapper(model, pruning_amount, pruning_mode, run_netron, folder_name):
 
     with open(f"{pruned_onnx_filename}.json", "w") as fp:
         fp.write(json.dumps(pruning_data, indent=4, ensure_ascii=False))
-
+    os.environ["BREVITAS_JIT"] = str(1)
     return model
 
 
