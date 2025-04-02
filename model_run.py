@@ -4,10 +4,12 @@ from dataloader import train_loader, test_loader
 import torch
 import time
 from brevitas.export import export_qonnx
+
 # import qonnx.core.onnx_exec as oxe
 from imports import (
     log_to_file,
-    checkpoint_best,
+    save_best_checkpoint,
+    export_best_onnx,
     TrainingEpochMeters,
     SqrHingeLoss,
     prune_wrapper,
@@ -31,7 +33,7 @@ from configurations import (
     log_freq,
 )
 
-#model_blueprint = load_model("runs/SIMD_0.9_30_Mar_2025__19_10_52/extended_model_0_9_SIMD.onnx")
+# model_blueprint = load_model("runs/SIMD_0.9_30_Mar_2025__19_10_52/extended_model_0_9_SIMD.onnx")
 build_dir = "models_folder"
 export_onnx_path = build_dir + "/end2end_cnv_w1a1_export_to_download.onnx"
 export_onnx_path2 = build_dir + "/checkpoint.tar"
@@ -54,7 +56,7 @@ pruning_log_identity = (
     f"{pruning_mode}_{str(pruning_amount)}_{now_time.strftime('%d_%b_%Y__%H_%M_%S')}"
 )
 
-#if os.path.exists(f"runs/{pruning_log_identity}/best_checkpoint.tar"):
+# if os.path.exists(f"runs/{pruning_log_identity}/best_checkpoint.tar"):
 #    model_dict = torch.load(f"runs/{pruning_log_identity}/best_checkpoint.tar")
 #    model.load_state_dict(model_dict["state_dict"])
 #    starting_epoch = model_dict["epoch"] - 1
@@ -146,7 +148,7 @@ for epoch in range(starting_epoch, epochs):
     if top1avg >= best_val_acc:
         best_val_acc = top1avg
         best_path = os.path.join(f"runs/{pruning_log_identity}", "best_checkpoint.tar")
-        checkpoint_best(model, optimizer, epoch, best_val_acc, best_path)
+        save_best_checkpoint(model, optimizer, epoch, best_val_acc, best_path)
     else:
         pass
         # checkpoint_best(epoch, f"checkpoint_pruning_amount-{pruning_amount:.3f}.tar")
@@ -158,5 +160,9 @@ example_inputs = torch.randn(1, 3, 32, 32)
 if os.path.exists(f"runs/{pruning_log_identity}/best_checkpoint.tar"):
     model_dict = torch.load(f"runs/{pruning_log_identity}/best_checkpoint.tar")
     model.load_state_dict(model_dict["state_dict"])
-export_qonnx(model, example_inputs, export_path=f"runs/{pruning_log_identity}/best_model_qonnx.onnx")
+export_best_onnx(
+    model,
+    example_inputs,
+    f"runs/{pruning_log_identity}/best_model_qonnx.onnx",
+)
 file1.close()

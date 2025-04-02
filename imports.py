@@ -5,7 +5,7 @@ import torch
 from torch.autograd import Function
 import json
 from torch.nn import Module, ModuleList, BatchNorm2d, MaxPool2d, BatchNorm1d
-
+import brevitas.config as config
 from brevitas.nn import QuantConv2d, QuantIdentity, QuantLinear
 
 # from brevitas.core.restrict_val import RestrictValueType
@@ -27,9 +27,20 @@ from visualize_netron import showInNetron
 example_inputs = torch.randn(1, 3, 32, 32)
 
 
+def disable_jit(func):
+    def wrapper(*args, **kwargs):
+        config.JIT_ENABLED = 0
+        result = func(*args, **kwargs)
+        config.JIT_ENABLED = 1
+        return result
+
+    return wrapper
+
+
+@disable_jit
 def prune_wrapper(model, pruning_amount, pruning_mode, run_netron, folder_name):
     onnx_path_extended = f"runs/{folder_name}/extended_model"
-    os.environ["BREVITAS_JIT"] = str(0)
+
     export_qonnx(
         model,
         args=example_inputs.cpu(),
@@ -54,7 +65,7 @@ def prune_wrapper(model, pruning_amount, pruning_mode, run_netron, folder_name):
 
     with open(f"{pruned_onnx_filename}.json", "w") as fp:
         fp.write(json.dumps(pruning_data, indent=4, ensure_ascii=False))
-    os.environ["BREVITAS_JIT"] = str(1)
+    config.JIT_ENABLED = 1
     return model
 
 
@@ -186,7 +197,8 @@ def prune_brevitas_model(model, layer_to_prune, SIMD=1, NumColPruned=-1) -> dict
         pruner.regularize(model)
 
 
-def checkpoint_best(best_model, optimizer, epoch, best_val_acc, best_path):
+@disable_jit
+def save_best_checkpoint(best_model, optimizer, epoch, best_val_acc, best_path):
     torch.save(
         {
             "state_dict": best_model.state_dict(),
@@ -195,6 +207,15 @@ def checkpoint_best(best_model, optimizer, epoch, best_val_acc, best_path):
             "best_val_acc": best_val_acc,
         },
         best_path,
+    )
+
+
+@disable_jit
+def export_best_onnx(best_model, example_inputs, pruning_log_identity):
+    export_qonnx(
+        best_model,
+        example_inputs,
+        export_path=f"runs/{pruning_log_identity}/best_model_qonnx.onnx",
     )
 
 
