@@ -3,7 +3,7 @@ import os
 from dataloader import train_loader, test_loader
 import torch
 import time
-
+from brevitas.export import export_qonnx
 # import qonnx.core.onnx_exec as oxe
 from imports import (
     log_to_file,
@@ -151,4 +151,12 @@ for epoch in range(starting_epoch, epochs):
         pass
         # checkpoint_best(epoch, f"checkpoint_pruning_amount-{pruning_amount:.3f}.tar")
 log_to_file(file1, f"Training complete. Best val acc= {best_val_acc}")
+# Define input shape
+example_inputs = torch.randn(1, 3, 32, 32)
+
+# Export to QONNX format
+if os.path.exists(f"runs/{pruning_log_identity}/best_checkpoint.tar"):
+    model_dict = torch.load(f"runs/{pruning_log_identity}/best_checkpoint.tar")
+    model.load_state_dict(model_dict["state_dict"])
+export_qonnx(model, example_inputs, export_path=f"runs/{pruning_log_identity}/best_model_qonnx.onnx")
 file1.close()
