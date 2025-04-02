@@ -28,8 +28,7 @@ example_inputs = torch.randn(1, 3, 32, 32)
 
 
 def prune_wrapper(model, pruning_amount, pruning_mode, run_netron, folder_name):
-    os.mkdir(f"runs/run_models/{folder_name}")
-    onnx_path_extended = f"runs/run_models/{folder_name}/extended_model"
+    onnx_path_extended = f"runs/{folder_name}/extended_model"
     export_qonnx(
         model,
         args=example_inputs.cpu(),

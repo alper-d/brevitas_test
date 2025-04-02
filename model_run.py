@@ -18,6 +18,7 @@ from models_folder.models.CNV import cnv
 import datetime
 from qonnx.core.modelwrapper import ModelWrapper
 from imports import get_test_model_trained
+from load_model import load_model
 
 # import onnx.numpy_helper as numpy_helper
 # from onnx2torch import convert
@@ -30,18 +31,38 @@ from configurations import (
     log_freq,
 )
 
-now_time = datetime.datetime.now()
+#model_blueprint = load_model("runs/SIMD_0.9_30_Mar_2025__19_10_52/extended_model_0_9_SIMD.onnx")
 build_dir = "models_folder"
+export_onnx_path = build_dir + "/end2end_cnv_w1a1_export_to_download.onnx"
+export_onnx_path2 = build_dir + "/checkpoint.tar"
+model_temp = ModelWrapper(export_onnx_path)
+model_temp2 = get_test_model_trained("CNV", 1, 1)
+model = cnv("cnv_1w1a")
+criterion, optimizer = get_optimizer(model)
+
+now_time = datetime.datetime.now()
+
 epoch_data = {"train": {}, "test": {}}
 epoch_data["train"][str(pruning_amount)] = []
 epoch_data["test"][str(pruning_amount)] = []
 num_classes = 10
+starting_epoch = 0
+best_val_acc = 0
+epochs = 30
+
 pruning_log_identity = (
     f"{pruning_mode}_{str(pruning_amount)}_{now_time.strftime('%d_%b_%Y__%H_%M_%S')}"
 )
 
+#if os.path.exists(f"runs/{pruning_log_identity}/best_checkpoint.tar"):
+#    model_dict = torch.load(f"runs/{pruning_log_identity}/best_checkpoint.tar")
+#    model.load_state_dict(model_dict["state_dict"])
+#    starting_epoch = model_dict["epoch"] - 1
+#    optimizer = model_dict["optim_dict"]
+#    best_val_acc = model_dict["best_val_acc"]
+os.mkdir(f"runs/{pruning_log_identity}")
 file1 = open(
-    f"runs/run_logs/pruning_logs_{pruning_log_identity}.txt",
+    f"runs/{pruning_log_identity}/pruning_logs_{pruning_log_identity}.txt",
     "a",
 )
 log_to_file(
@@ -49,13 +70,8 @@ log_to_file(
     f"Starting to write at {now_time.strftime('%H:%M:%S%p on %d %B %Y')}\nPruning Amount: {pruning_amount}\nPruning Mode: {pruning_mode}\n\n",
 )
 
-
-export_onnx_path = build_dir + "/end2end_cnv_w1a1_export_to_download.onnx"
-export_onnx_path2 = build_dir + "/checkpoint.tar"
-model_temp = ModelWrapper(export_onnx_path)
-model_temp2 = get_test_model_trained("CNV", 1, 1)
 # actual model load
-model = cnv("cnv_1w1a")
+
 package = torch.load(export_onnx_path2, map_location="cpu")
 model_state_dict = package["state_dict"]
 model.load_state_dict(model_state_dict)
@@ -65,13 +81,6 @@ model = prune_wrapper(
 # model = CNV(10, WEIGHT_BIT_WIDTH, ACT_BIT_WIDTH, 8, 3).to(device=device)
 
 eval_meters = EvalEpochMeters()
-criterion, optimizer = get_optimizer(model)
-starting_epoch = 1
-best_val_acc = 0
-epochs = 30
-
-#if os.path.exists(f"runs/run_models/{pruning_log_identity}/best_checkpoint.tar"):
-#    model_dict = torch.load(f"runs/run_models/{pruning_log_identity}/best_checkpoint.tar")
 
 for epoch in range(starting_epoch, epochs):
     # Set to training mode
@@ -136,11 +145,10 @@ for epoch in range(starting_epoch, epochs):
     log_to_file(file1, f"Epoch {epoch} complete. Test accuracy {str(top1avg)}\n")
     if top1avg >= best_val_acc:
         best_val_acc = top1avg
-        best_path = os.path.join(
-            f"runs/run_models/{pruning_log_identity}", "best_checkpoint.tar"
-        )
+        best_path = os.path.join(f"runs/{pruning_log_identity}", "best_checkpoint.tar")
         checkpoint_best(model, optimizer, epoch, best_val_acc, best_path)
     else:
         pass
         # checkpoint_best(epoch, f"checkpoint_pruning_amount-{pruning_amount:.3f}.tar")
+log_to_file(file1, f"Training complete. Best val acc= {best_val_acc}")
 file1.close()
