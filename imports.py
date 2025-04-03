@@ -48,7 +48,10 @@ def prune_wrapper(model, pruning_amount, pruning_mode, run_netron, folder_name):
         opset_version=13,
     )
     pruning_data = prune_all_conv_layers(
-        model, SIMD_list=[3, 32, 32, 32, 32, 32, 32, 32, 64], NumColPruned=pruning_amount, pruning_mode=pruning_mode
+        model,
+        SIMD_list=[3, 32, 32, 32, 32, 32, 32, 32, 64],
+        NumColPruned=pruning_amount,
+        pruning_mode=pruning_mode,
     )
     pruned_onnx_filename = (
         f"{onnx_path_extended}_{str(pruning_amount).replace('.', '_')}_{pruning_mode}"
@@ -143,9 +146,7 @@ def prune_brevitas_model(model, layer_to_prune, SIMD=1, NumColPruned=-1) -> dict
         NumColPruned = int(round((in_channels / SIMD) * NumColPruned))
     # channels_to_prune = math.floor(model.conv_features[conv_feature_index].in_channels * pruning_amount)
     prune_block_len = (
-        SIMD * NumColPruned
-        if SIMD * NumColPruned < in_channels
-        else in_channels - SIMD
+        SIMD * NumColPruned if SIMD * NumColPruned < in_channels else in_channels - SIMD
     )
     channels_to_prune = [i for i in range(prune_block_len)]
     dep_graph = tp.DependencyGraph().build_dependency(
@@ -197,7 +198,6 @@ def prune_brevitas_model(model, layer_to_prune, SIMD=1, NumColPruned=-1) -> dict
         pruner.regularize(model)
 
 
-@disable_jit
 def save_best_checkpoint(best_model, optimizer, epoch, best_val_acc, best_path):
     torch.save(
         {
