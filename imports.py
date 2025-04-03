@@ -144,7 +144,7 @@ def prune_brevitas_model(model, layer_to_prune, SIMD=1, NumColPruned=-1) -> dict
     # channels_to_prune = math.floor(model.conv_features[conv_feature_index].in_channels * pruning_amount)
     prune_block_len = (
         SIMD * NumColPruned
-        if SIMD * NumColPruned <= in_channels
+        if SIMD * NumColPruned < in_channels
         else in_channels - SIMD
     )
     channels_to_prune = [i for i in range(prune_block_len)]
