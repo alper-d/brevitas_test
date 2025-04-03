@@ -25,6 +25,7 @@ from brevitas.export import export_qonnx
 from visualize_netron import showInNetron
 
 example_inputs = torch.randn(1, 3, 32, 32)
+SIMD_LIST = [3, 32, 32, 32, 32, 32, 32, 32, 64]
 
 
 def disable_jit(func):
@@ -49,7 +50,7 @@ def prune_wrapper(model, pruning_amount, pruning_mode, run_netron, folder_name):
     )
     pruning_data = prune_all_conv_layers(
         model,
-        SIMD_list=[3, 32, 32, 32, 32, 32, 32, 32, 64],
+        SIMD_list=SIMD_LIST,
         NumColPruned=pruning_amount,
         pruning_mode=pruning_mode,
     )
@@ -89,13 +90,14 @@ def prune_all_conv_layers(model, SIMD_list, NumColPruned=-1, pruning_mode="struc
             ), f"SIMD must divide IFM Channels. Pruning {layer} is skipped."
         except AssertionError:
             continue
+        pruning_ratio = NumColPruned[layer_idx] if isinstance(NumColPruned, list) else NumColPruned
         if pruning_mode == "structured":
             pruning_entities = prune_brevitas_model(
-                model, layer_to_prune=layer, SIMD=SIMD, NumColPruned=NumColPruned
+                model, layer_to_prune=layer, SIMD=SIMD, NumColPruned=pruning_ratio
             )
         else:
             pruning_entities = prune_brevitas_modelSIMD(
-                model, layer_to_prune=layer, SIMD_in=SIMD, NumColPruned=NumColPruned
+                model, layer_to_prune=layer, SIMD_in=SIMD, NumColPruned=pruning_ratio
             )
         pruning_data.append(
             {

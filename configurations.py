@@ -17,7 +17,8 @@ def get_argparser():
 
 os.environ["BREVITAS_JIT"] = "1"
 argparser = get_argparser()
-pruning_amount = argparser.pruning_amount
+# pruning_amount = argparser.pruning_amount
+pruning_amount = [0.0, 0.0] + [0.5] * 6 + [0.0]
 run_netron = argparser.run_netron
 pruning_mode = argparser.pruning_mode
 
