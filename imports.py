@@ -48,7 +48,7 @@ def prune_wrapper(model, pruning_amount, pruning_mode, run_netron, folder_name):
         opset_version=13,
     )
     pruning_data = prune_all_conv_layers(
-        model, SIMD=32, NumColPruned=pruning_amount, pruning_mode=pruning_mode
+        model, SIMD_list=[3, 32, 32, 32, 32, 32, 32, 32, 64], NumColPruned=pruning_amount, pruning_mode=pruning_mode
     )
     pruned_onnx_filename = (
         f"{onnx_path_extended}_{str(pruning_amount).replace('.', '_')}_{pruning_mode}"
@@ -75,10 +75,10 @@ def conv_layer_traverse(model):
             yield layer
 
 
-def prune_all_conv_layers(model, SIMD=1, NumColPruned=-1, pruning_mode="structured"):
+def prune_all_conv_layers(model, SIMD_list, NumColPruned=-1, pruning_mode="structured"):
     pruning_data = []
     for layer_idx, layer in enumerate(conv_layer_traverse(model)):
-        SIMD = SIMD[layer_idx] if isinstance(SIMD, list) else SIMD
+        SIMD = SIMD_list[layer_idx]
         in_channels = layer.in_channels
         try:
             assert (
