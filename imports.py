@@ -5,7 +5,7 @@ import torch
 from torch.autograd import Function
 import json
 from torch.nn import Module, ModuleList, BatchNorm2d, MaxPool2d, BatchNorm1d
-
+import brevitas.config as config
 from brevitas.nn import QuantConv2d, QuantIdentity, QuantLinear
 
 # from brevitas.core.restrict_val import RestrictValueType
@@ -27,9 +27,20 @@ from visualize_netron import showInNetron
 example_inputs = torch.randn(1, 3, 32, 32)
 
 
+def disable_jit(func):
+    def wrapper(*args, **kwargs):
+        config.JIT_ENABLED = 0
+        result = func(*args, **kwargs)
+        config.JIT_ENABLED = 1
+        return result
+
+    return wrapper
+
+
+@disable_jit
 def prune_wrapper(model, pruning_amount, pruning_mode, run_netron, folder_name):
     onnx_path_extended = f"runs/{folder_name}/extended_model"
-    os.environ["BREVITAS_JIT"] = str(0)
+
     export_qonnx(
         model,
         args=example_inputs.cpu(),
@@ -37,7 +48,7 @@ def prune_wrapper(model, pruning_amount, pruning_mode, run_netron, folder_name):
         opset_version=13,
     )
     pruning_data = prune_all_conv_layers(
-        model, SIMD=32, NumColPruned=pruning_amount, pruning_mode=pruning_mode
+        model, SIMD_list=[3, 32, 32, 32, 32, 32, 32, 32, 64], NumColPruned=pruning_amount, pruning_mode=pruning_mode
     )
     pruned_onnx_filename = (
         f"{onnx_path_extended}_{str(pruning_amount).replace('.', '_')}_{pruning_mode}"
@@ -54,7 +65,7 @@ def prune_wrapper(model, pruning_amount, pruning_mode, run_netron, folder_name):
 
     with open(f"{pruned_onnx_filename}.json", "w") as fp:
         fp.write(json.dumps(pruning_data, indent=4, ensure_ascii=False))
-    os.environ["BREVITAS_JIT"] = str(1)
+    config.JIT_ENABLED = 1
     return model
 
 
@@ -64,10 +75,10 @@ def conv_layer_traverse(model):
             yield layer
 
 
-def prune_all_conv_layers(model, SIMD=1, NumColPruned=-1, pruning_mode="structured"):
+def prune_all_conv_layers(model, SIMD_list, NumColPruned=-1, pruning_mode="structured"):
     pruning_data = []
     for layer_idx, layer in enumerate(conv_layer_traverse(model)):
-        SIMD = SIMD[layer_idx] if isinstance(SIMD, list) else SIMD
+        SIMD = SIMD_list[layer_idx]
         in_channels = layer.in_channels
         try:
             assert (
@@ -133,7 +144,7 @@ def prune_brevitas_model(model, layer_to_prune, SIMD=1, NumColPruned=-1) -> dict
     # channels_to_prune = math.floor(model.conv_features[conv_feature_index].in_channels * pruning_amount)
     prune_block_len = (
         SIMD * NumColPruned
-        if SIMD * NumColPruned <= in_channels
+        if SIMD * NumColPruned < in_channels
         else in_channels - SIMD
     )
     channels_to_prune = [i for i in range(prune_block_len)]
@@ -186,7 +197,8 @@ def prune_brevitas_model(model, layer_to_prune, SIMD=1, NumColPruned=-1) -> dict
         pruner.regularize(model)
 
 
-def checkpoint_best(best_model, optimizer, epoch, best_val_acc, best_path):
+@disable_jit
+def save_best_checkpoint(best_model, optimizer, epoch, best_val_acc, best_path):
     torch.save(
         {
             "state_dict": best_model.state_dict(),
@@ -195,6 +207,15 @@ def checkpoint_best(best_model, optimizer, epoch, best_val_acc, best_path):
             "best_val_acc": best_val_acc,
         },
         best_path,
+    )
+
+
+@disable_jit
+def export_best_onnx(best_model, example_inputs, export_path):
+    export_qonnx(
+        best_model,
+        example_inputs,
+        export_path=export_path,
     )
 
 
