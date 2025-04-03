@@ -157,7 +157,7 @@ def cnv(cfg):
         cfg.read(config_path)
         return cfg
 
-    cfg = get_model_cfg("cnv_1w1a")
+    cfg = get_model_cfg(cfg)
     weight_bit_width = cfg.getint("QUANT", "WEIGHT_BIT_WIDTH")
     act_bit_width = cfg.getint("QUANT", "ACT_BIT_WIDTH")
     in_bit_width = cfg.getint("QUANT", "IN_BIT_WIDTH")
