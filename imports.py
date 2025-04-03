@@ -211,11 +211,11 @@ def save_best_checkpoint(best_model, optimizer, epoch, best_val_acc, best_path):
 
 
 @disable_jit
-def export_best_onnx(best_model, example_inputs, pruning_log_identity):
+def export_best_onnx(best_model, example_inputs, export_path):
     export_qonnx(
         best_model,
         example_inputs,
-        export_path=f"runs/{pruning_log_identity}/best_model_qonnx.onnx",
+        export_path=export_path,
     )
 
 

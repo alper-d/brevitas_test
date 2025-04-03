@@ -162,7 +162,7 @@ if os.path.exists(f"runs/{pruning_log_identity}/best_checkpoint.tar"):
     model.load_state_dict(model_dict["state_dict"])
 export_best_onnx(
     model,
-    example_inputs,
-    f"runs/{pruning_log_identity}/best_model_qonnx.onnx",
+    example_inputs=example_inputs,
+    export_path=f"runs/{pruning_log_identity}/best_model_qonnx.onnx",
 )
 file1.close()
