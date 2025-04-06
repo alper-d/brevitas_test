@@ -15,7 +15,6 @@ from imports import (
     EvalEpochMeters,
     eval_model,
 )
-from models_folder.models.CNV import cnv
 from models_folder.models import model_with_cfg
 from qonnx.core.modelwrapper import ModelWrapper
 from imports import get_test_model_trained
@@ -30,8 +29,12 @@ from configurations import (
     get_optimizer,
     device,
     log_freq,
-    now_str,
+    path_for_save,
     SqrHingeLoss,
+    epochs,
+    num_classes,
+    starting_epoch,
+    best_val_acc,
 )
 
 # model_blueprint = load_model("runs/SIMD_0.9_30_Mar_2025__19_10_52/extended_model_0_9_SIMD.onnx")
@@ -43,16 +46,6 @@ model_temp2 = get_test_model_trained("CNV", 1, 1)
 model, _ = model_with_cfg(model_identity, pretrained=False)
 criterion, optimizer = get_optimizer(model)
 
-epoch_data = {"train": {}, "test": {}}
-epoch_data["train"][str(pruning_amount)] = []
-epoch_data["test"][str(pruning_amount)] = []
-num_classes = 10
-starting_epoch = 0
-best_val_acc = 0
-epochs = 30
-
-pruning_type = f"{pruning_mode}_{str(pruning_amount)}_{model_identity}"
-
 
 # if os.path.exists(f"runs/{pruning_log_identity}/best_checkpoint.tar"):
 #    model_dict = torch.load(f"runs/{pruning_log_identity}/best_checkpoint.tar")
@@ -60,10 +53,6 @@ pruning_type = f"{pruning_mode}_{str(pruning_amount)}_{model_identity}"
 #    starting_epoch = model_dict["epoch"] - 1
 #    optimizer = model_dict["optim_dict"]
 #    best_val_acc = model_dict["best_val_acc"]
-if not os.path.exists(f"runs/{pruning_type}"):
-    os.mkdir(f"runs/{pruning_type}")
-os.mkdir(f"runs/{pruning_type}/{now_str}")
-path_for_save = f"runs/{pruning_type}/{now_str}"
 file1 = start_log_to_file(path_for_save)
 
 # actual model load
@@ -131,8 +120,6 @@ for epoch in range(starting_epoch, epochs):
         top1avg, save_data_list = eval_model(
             model, criterion, test_loader, num_classes, epoch, device
         )
-    # epoch_data["test"][str(pruning_amount)].append(top1avg)
-    # epoch_data["train"][str(pruning_amount)].append(eval_meters.top1.avg)
     log_to_file(
         file1, f"Epoch {epoch} complete. Train  accuracy {str(eval_meters.top1.avg)}\n"
     )

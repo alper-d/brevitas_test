@@ -18,7 +18,6 @@ def get_argparser():
     return argparser.parse_args()
 
 
-os.environ["BREVITAS_JIT"] = "1"
 argparser = get_argparser()
 # pruning_amount = argparser.pruning_amount
 pruning_amount = [0.0, 0.0] + [0.5] * 4 + [0.0] * 3
@@ -29,6 +28,11 @@ model_identity = "cnv_1w2a"
 
 now_time = datetime.datetime.now()
 now_str = now_time.strftime("%d_%b_%Y__%H_%M_%S")
+pruning_type = f"{pruning_mode}_{str(pruning_amount)}_{model_identity}"
+if not os.path.exists(f"runs/{pruning_type}"):
+    os.mkdir(f"runs/{pruning_type}")
+os.mkdir(f"runs/{pruning_type}/{now_str}")
+path_for_save = f"runs/{pruning_type}/{now_str}"
 
 network = "cnv"
 experiments = "."
@@ -39,6 +43,7 @@ lr = 0.02
 weight_decay = 0
 random_seed = 1
 log_freq = 10
+epochs, num_classes, starting_epoch, best_val_acc = 30, 10, 0, 0
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
