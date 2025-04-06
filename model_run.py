@@ -16,6 +16,7 @@ from imports import (
     eval_model,
 )
 from models_folder.models.CNV import cnv
+from models_folder.models import model_with_cfg
 from qonnx.core.modelwrapper import ModelWrapper
 from imports import get_test_model_trained
 
@@ -39,7 +40,7 @@ export_onnx_path = build_dir + "/end2end_cnv_w1a1_export_to_download.onnx"
 export_onnx_path2 = build_dir + "/checkpoint.tar"
 model_temp = ModelWrapper(export_onnx_path)
 model_temp2 = get_test_model_trained("CNV", 1, 1)
-model = cnv(model_identity)
+model, _ = model_with_cfg(model_identity, pretrained=False)
 criterion, optimizer = get_optimizer(model)
 
 epoch_data = {"train": {}, "test": {}}

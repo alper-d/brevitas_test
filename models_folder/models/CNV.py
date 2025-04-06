@@ -149,15 +149,15 @@ class CNV(Module):
 
 
 def cnv(cfg):
-    def get_model_cfg(name):
-        cfg = ConfigParser()
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        config_path = os.path.join(current_dir, "..", "cfg", name.lower() + ".ini")
-        assert os.path.exists(config_path), f"{config_path} not found."
-        cfg.read(config_path)
-        return cfg
-
-    cfg = get_model_cfg(cfg)
+    #def get_model_cfg(name):
+    #    cfg = ConfigParser()
+    #    current_dir = os.path.dirname(os.path.abspath(__file__))
+    #    config_path = os.path.join(current_dir, "..", "cfg", name.lower() + ".ini")
+    #    assert os.path.exists(config_path), f"{config_path} not found."
+    #    cfg.read(config_path)
+    #    return cfg
+    #
+    #cfg = get_model_cfg(cfg)
     weight_bit_width = cfg.getint("QUANT", "WEIGHT_BIT_WIDTH")
     act_bit_width = cfg.getint("QUANT", "ACT_BIT_WIDTH")
     in_bit_width = cfg.getint("QUANT", "IN_BIT_WIDTH")
