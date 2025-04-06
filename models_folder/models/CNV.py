@@ -7,8 +7,6 @@ from torch.nn import BatchNorm2d
 from torch.nn import MaxPool2d
 from torch.nn import Module
 from torch.nn import ModuleList
-from configparser import ConfigParser
-import os
 
 from brevitas.core.restrict_val import RestrictValueType
 from brevitas.nn import QuantConv2d

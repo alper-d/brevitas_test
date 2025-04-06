@@ -1,5 +1,4 @@
 from onnx2torch import convert
-from imports import CNV
 
 
 def load_model(onnx_model):

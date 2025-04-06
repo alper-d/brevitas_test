@@ -130,7 +130,7 @@ class CNV(Module):
             #    print(x.shape)
             try:
                 x = mod(x)
-            except Exception as e:
+            except Exception:
                 pass
                 # print(e)
                 # print("i --->", i)
