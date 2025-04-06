@@ -3,24 +3,21 @@ import os
 from dataloader import train_loader, test_loader
 import torch
 import time
-from brevitas.export import export_qonnx
 
 # import qonnx.core.onnx_exec as oxe
 from imports import (
     log_to_file,
+    start_log_to_file,
     save_best_checkpoint,
     export_best_onnx,
     TrainingEpochMeters,
-    SqrHingeLoss,
     prune_wrapper,
     EvalEpochMeters,
     eval_model,
 )
 from models_folder.models.CNV import cnv
-import datetime
 from qonnx.core.modelwrapper import ModelWrapper
 from imports import get_test_model_trained
-from load_model import load_model
 
 # import onnx.numpy_helper as numpy_helper
 # from onnx2torch import convert
@@ -32,6 +29,8 @@ from configurations import (
     get_optimizer,
     device,
     log_freq,
+    now_str,
+    SqrHingeLoss,
 )
 
 # model_blueprint = load_model("runs/SIMD_0.9_30_Mar_2025__19_10_52/extended_model_0_9_SIMD.onnx")
@@ -43,8 +42,6 @@ model_temp2 = get_test_model_trained("CNV", 1, 1)
 model = cnv(model_identity)
 criterion, optimizer = get_optimizer(model)
 
-now_time = datetime.datetime.now()
-now_str = now_time.strftime("%d_%b_%Y__%H_%M_%S")
 epoch_data = {"train": {}, "test": {}}
 epoch_data["train"][str(pruning_amount)] = []
 epoch_data["test"][str(pruning_amount)] = []
@@ -65,19 +62,8 @@ pruning_type = f"{pruning_mode}_{str(pruning_amount)}_{model_identity}"
 if not os.path.exists(f"runs/{pruning_type}"):
     os.mkdir(f"runs/{pruning_type}")
 os.mkdir(f"runs/{pruning_type}/{now_str}")
-
-pruning_log_identity = (
-    f"{pruning_mode}_{str(pruning_amount)}_{now_time.strftime('%d_%b_%Y__%H_%M_%S')}"
-)
 path_for_save = f"runs/{pruning_type}/{now_str}"
-file1 = open(
-    f"{path_for_save}/pruning_logs.txt",
-    "a",
-)
-log_to_file(
-    file1,
-    f"Starting to write at {now_time.strftime('%H:%M:%S%p on %d %B %Y')}\nPruning Amount: {pruning_amount}\nPruning Mode: {pruning_mode}\n\n",
-)
+file1 = start_log_to_file(path_for_save)
 
 # actual model load
 

@@ -1,8 +1,5 @@
-import os
-
 import torch.nn as nn
 import torch
-from torch.autograd import Function
 import json
 from torch.nn import Module, ModuleList, BatchNorm2d, MaxPool2d, BatchNorm1d
 import brevitas.config as config
@@ -23,6 +20,7 @@ import torch_pruning as tp
 # from torch_pruning import utils
 from brevitas.export import export_qonnx
 from visualize_netron import showInNetron
+from configurations import now_time, pruning_amount, pruning_mode, SqrHingeLoss
 
 example_inputs = torch.randn(1, 3, 32, 32)
 SIMD_LIST = [3, 32, 32, 32, 32, 32, 32, 32, 64]
@@ -448,35 +446,6 @@ class AverageMeter(object):
         self.avg = self.sum / self.count
 
 
-class squared_hinge_loss(Function):
-    @staticmethod
-    def forward(ctx, predictions, targets):
-        ctx.save_for_backward(predictions, targets)
-        output = 1.0 - predictions.mul(targets)
-        output[output.le(0.0)] = 0.0
-        loss = torch.mean(output.mul(output))
-        return loss
-
-    @staticmethod
-    def backward(ctx, grad_output):
-        predictions, targets = ctx.saved_tensors
-        output = 1.0 - predictions.mul(targets)
-        output[output.le(0.0)] = 0.0
-        grad_output.resize_as_(predictions).copy_(targets).mul_(-2.0).mul_(output)
-        grad_output.mul_(output.ne(0).float())
-        grad_output.div_(predictions.numel())
-        return grad_output, None
-
-
-class SqrHingeLoss(nn.Module):
-    # Squared Hinge Loss
-    def __init__(self):
-        super(SqrHingeLoss, self).__init__()
-
-    def forward(self, input, target):
-        return squared_hinge_loss.apply(input, target)
-
-
 def accuracy(output, target, topk=(1,)):
     """Computes the precision@k for the specified values of k"""
     maxk = max(topk)
@@ -561,3 +530,12 @@ def eval_model(model, criterion, test_loader, num_classes=10, epoch=-1, device="
 def log_to_file(file, text):
     file.write(text)
     file.flush()
+
+
+def start_log_to_file(path):
+    file1 = open(f"{path}/pruning_logs.txt", "a")
+    log_to_file(
+        file1,
+        f"Starting to write at {now_time.strftime('%H:%M:%S%p on %d %B %Y')}\nPruning Amount: {pruning_amount}\nPruning Mode: {pruning_mode}\n\n",
+    )
+    return file1

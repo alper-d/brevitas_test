@@ -1,8 +1,10 @@
 import argparse
 import torch
 import torch.optim as optim
-from imports import SqrHingeLoss
+import torch.nn as nn
+from torch.autograd import Function
 import os
+import datetime
 
 
 def get_argparser():
@@ -25,6 +27,9 @@ pruning_mode = argparser.pruning_mode
 model_identity = argparser.model
 model_identity = "cnv_1w2a"
 
+now_time = datetime.datetime.now()
+now_str = now_time.strftime("%d_%b_%Y__%H_%M_%S")
+
 network = "cnv"
 experiments = "."
 datadir = "./data/"
@@ -36,6 +41,35 @@ random_seed = 1
 log_freq = 10
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
+class squared_hinge_loss(Function):
+    @staticmethod
+    def forward(ctx, predictions, targets):
+        ctx.save_for_backward(predictions, targets)
+        output = 1.0 - predictions.mul(targets)
+        output[output.le(0.0)] = 0.0
+        loss = torch.mean(output.mul(output))
+        return loss
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        predictions, targets = ctx.saved_tensors
+        output = 1.0 - predictions.mul(targets)
+        output[output.le(0.0)] = 0.0
+        grad_output.resize_as_(predictions).copy_(targets).mul_(-2.0).mul_(output)
+        grad_output.mul_(output.ne(0).float())
+        grad_output.div_(predictions.numel())
+        return grad_output, None
+
+
+class SqrHingeLoss(nn.Module):
+    # Squared Hinge Loss
+    def __init__(self):
+        super(SqrHingeLoss, self).__init__()
+
+    def forward(self, input, target):
+        return squared_hinge_loss.apply(input, target)
 
 
 def get_optimizer(model):
