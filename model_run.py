@@ -28,6 +28,7 @@ from configurations import (
     run_netron,
     pruning_mode,
     pruning_amount,
+    model_identity,
     get_optimizer,
     device,
     log_freq,
@@ -35,12 +36,11 @@ from configurations import (
 
 # model_blueprint = load_model("runs/SIMD_0.9_30_Mar_2025__19_10_52/extended_model_0_9_SIMD.onnx")
 build_dir = "models_folder"
-MODEL_IDENTITY = "cnv_1w2a"
 export_onnx_path = build_dir + "/end2end_cnv_w1a1_export_to_download.onnx"
 export_onnx_path2 = build_dir + "/checkpoint.tar"
 model_temp = ModelWrapper(export_onnx_path)
 model_temp2 = get_test_model_trained("CNV", 1, 1)
-model = cnv(MODEL_IDENTITY)
+model = cnv(model_identity)
 criterion, optimizer = get_optimizer(model)
 
 now_time = datetime.datetime.now()
@@ -53,7 +53,7 @@ starting_epoch = 0
 best_val_acc = 0
 epochs = 30
 
-pruning_type = f"{pruning_mode}_{str(pruning_amount)}_{MODEL_IDENTITY}"
+pruning_type = f"{pruning_mode}_{str(pruning_amount)}_{model_identity}"
 
 
 # if os.path.exists(f"runs/{pruning_log_identity}/best_checkpoint.tar"):

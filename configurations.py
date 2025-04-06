@@ -9,6 +9,7 @@ def get_argparser():
     argparser = argparse.ArgumentParser(description="put parameters")
     argparser.add_argument("--pruning_amount", type=float, default=0.9, help="")
     argparser.add_argument("--run_netron", type=bool, default=False, help="")
+    argparser.add_argument("--model", type=str, default="cnv_1w1a", help="")
     argparser.add_argument(
         "--pruning_mode", type=str, default="structured", choices=["structured", "SIMD"]
     )
@@ -21,6 +22,8 @@ argparser = get_argparser()
 pruning_amount = [0.0, 0.0] + [0.5] * 4 + [0.0] * 3
 run_netron = argparser.run_netron
 pruning_mode = argparser.pruning_mode
+model_identity = argparser.model
+model_identity = "cnv_1w2a"
 
 network = "cnv"
 experiments = "."
