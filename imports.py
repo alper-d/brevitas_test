@@ -40,7 +40,7 @@ def disable_jit(func):
 
 @disable_jit
 def prune_wrapper(model, pruning_amount, pruning_mode, run_netron, folder_name):
-    onnx_path_extended = f"runs/{folder_name}/extended_model"
+    onnx_path_extended = f"{folder_name}/extended_model"
 
     export_qonnx(
         model,
@@ -54,9 +54,7 @@ def prune_wrapper(model, pruning_amount, pruning_mode, run_netron, folder_name):
         NumColPruned=pruning_amount,
         pruning_mode=pruning_mode,
     )
-    pruned_onnx_filename = (
-        f"{onnx_path_extended}_{str(pruning_amount).replace('.', '_')}_{pruning_mode}"
-    )
+    pruned_onnx_filename = f"{onnx_path_extended}_pruned"
     export_qonnx(
         model,
         args=example_inputs.cpu(),
@@ -90,7 +88,9 @@ def prune_all_conv_layers(model, SIMD_list, NumColPruned=-1, pruning_mode="struc
             ), f"SIMD must divide IFM Channels. Pruning {layer} is skipped."
         except AssertionError:
             continue
-        pruning_ratio = NumColPruned[layer_idx] if isinstance(NumColPruned, list) else NumColPruned
+        pruning_ratio = (
+            NumColPruned[layer_idx] if isinstance(NumColPruned, list) else NumColPruned
+        )
         if pruning_mode == "structured":
             pruning_entities = prune_brevitas_model(
                 model, layer_to_prune=layer, SIMD=SIMD, NumColPruned=pruning_ratio
