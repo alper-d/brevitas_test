@@ -29,6 +29,8 @@ from configurations import (
     device,
     log_freq,
     path_for_save,
+    pruning_type,
+    now_str,
     SqrHingeLoss,
     epochs,
     lr_schedule_period,
@@ -36,6 +38,7 @@ from configurations import (
     starting_epoch,
     best_val_acc,
 )
+from shutil import make_archive
 
 # model_blueprint = load_model("runs/SIMD_0.9_30_Mar_2025__19_10_52/extended_model_0_9_SIMD.onnx")
 build_dir = "models_folder"
@@ -133,7 +136,6 @@ for epoch in range(starting_epoch, epochs):
         save_best_checkpoint(model, optimizer, epoch, best_val_acc, best_path)
     else:
         pass
-        # checkpoint_best(epoch, f"checkpoint_pruning_amount-{pruning_amount:.3f}.tar")
 log_to_file(file1, f"Training complete. Best val acc= {best_val_acc}")
 # Define input shape
 example_inputs = torch.randn(1, 3, 32, 32)
@@ -148,3 +150,4 @@ export_best_onnx(
     export_path=f"{path_for_save}/best_model_qonnx.onnx",
 )
 file1.close()
+make_archive(f"run_zip/{pruning_type}_{now_str}", "zip", path_for_save)
