@@ -342,8 +342,23 @@ def log_to_file(file, text):
 
 def start_log_to_file(path):
     file1 = open(f"{path}/pruning_logs.txt", "a")
-    log_to_file(
-        file1,
-        f"Starting to write at {now_time.strftime('%H:%M:%S%p on %d %B %Y')}\nPruning Amount: {pruning_amount}\nPruning Mode: {pruning_mode}\n\n",
+    log_str = """Starting to write at {}
+Pruning Amount: {}
+Pruning Mode: {}
+Model_Identity: {}
+Weight_decay: {}
+LR: {}
+LR schedule period: {}
+SIMD_LIST: {}
+    """.format(
+        now_time.strftime("%H:%M:%S%p on %d %B %Y"),
+        pruning_amount,
+        pruning_mode,
+        model_identity,
+        weight_decay,
+        lr,
+        lr_schedule_period,
+        SIMD_LIST,
     )
+    log_to_file(file1, log_str)
     return file1

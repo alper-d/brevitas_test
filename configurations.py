@@ -28,7 +28,7 @@ model_identity = "cnv_2w2a"
 
 now_time = datetime.datetime.now()
 now_str = now_time.strftime("%d_%b_%Y__%H_%M_%S")
-pruning_type = f"{pruning_mode}_{str(pruning_amount)}_{model_identity}"
+pruning_type = f"{pruning_mode}_{model_identity}"
 if not os.path.exists(f"runs/{pruning_type}"):
     os.mkdir(f"runs/{pruning_type}")
 os.mkdir(f"runs/{pruning_type}/{now_str}")
