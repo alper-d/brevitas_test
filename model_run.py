@@ -42,7 +42,7 @@ export_onnx_path = build_dir + "/end2end_cnv_w1a1_export_to_download.onnx"
 export_onnx_path2 = build_dir + "/checkpoint.tar"
 model_temp = ModelWrapper(export_onnx_path)
 # model_temp2 = get_test_model_trained("CNV", 1, 1)
-model, _ = model_with_cfg(model_identity, pretrained=False)
+model, _ = model_with_cfg(model_identity, pretrained=True)
 criterion, optimizer = get_optimizer(model)
 
 
@@ -59,7 +59,7 @@ file1 = start_log_to_file(path_for_save)
 # package = torch.load(export_onnx_path2, map_location="cpu")
 # model_state_dict = package["state_dict"]
 # model.load_state_dict(model_state_dict)
-model = prune_wrapper(model, pruning_amount, pruning_mode, run_netron, path_for_save)
+model = prune_wrapper(model, pruning_amount, pruning_mode, run_netron, path_for_save, model_identity)
 # model = CNV(10, WEIGHT_BIT_WIDTH, ACT_BIT_WIDTH, 8, 3).to(device=device)
 
 eval_meters = EvalEpochMeters()
@@ -104,7 +104,6 @@ for epoch in range(starting_epoch, epochs):
 
         model.clip_weights(-1, 1)
 
-        # measure elapsed time
         epoch_meters.batch_time.update(time.time() - start_batch)
         pred = output.data.argmax(1, keepdim=True)
         correct = pred.eq(target.data.view_as(pred)).sum()

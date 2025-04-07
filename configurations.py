@@ -24,7 +24,7 @@ pruning_amount = [0.0, 0.0] + [0.5] * 4 + [0.0] * 3
 run_netron = argparser.run_netron
 pruning_mode = argparser.pruning_mode
 model_identity = argparser.model
-model_identity = "cnv_1w2a"
+model_identity = "cnv_2w2a"
 
 now_time = datetime.datetime.now()
 now_str = now_time.strftime("%d_%b_%Y__%H_%M_%S")

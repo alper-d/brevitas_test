@@ -27,7 +27,7 @@ def disable_jit(func):
 
 
 @disable_jit
-def prune_wrapper(model, pruning_amount, pruning_mode, run_netron, folder_name):
+def prune_wrapper(model, pruning_amount, pruning_mode, run_netron, folder_name, model_identity):
     onnx_path_extended = f"{folder_name}/extended_model"
 
     export_qonnx(
@@ -52,7 +52,7 @@ def prune_wrapper(model, pruning_amount, pruning_mode, run_netron, folder_name):
     if run_netron:
         showInNetron(f"{onnx_path_extended}.onnx", port=8080)
         showInNetron(f"{pruned_onnx_filename}.onnx", port=8081)
-
+    pruning_data.append({"model_identity": model_identity})
     with open(f"{pruned_onnx_filename}.json", "w") as fp:
         fp.write(json.dumps(pruning_data, indent=4, ensure_ascii=False))
     config.JIT_ENABLED = 1
