@@ -19,6 +19,7 @@ from configurations import (
     weight_decay,
     lr,
     lr_schedule_period,
+    lr_schedule_ratio
 )
 
 example_inputs = torch.randn(1, 3, 32, 32)
@@ -349,6 +350,7 @@ Model_Identity: {}
 Weight_decay: {}
 LR: {}
 LR schedule period: {}
+LR schedule ratio: {}
 SIMD_LIST: {}
     """.format(
         now_time.strftime("%H:%M:%S%p on %d %B %Y"),
@@ -358,6 +360,7 @@ SIMD_LIST: {}
         weight_decay,
         lr,
         lr_schedule_period,
+        lr_schedule_ratio,
         SIMD_LIST,
     )
     log_to_file(file1, log_str)

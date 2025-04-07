@@ -41,6 +41,7 @@ batch_size = 100
 num_workers = 6
 lr = 0.02
 lr_schedule_period = 5
+lr_schedule_ratio = 0.25
 weight_decay = 0
 random_seed = 1
 log_freq = 10

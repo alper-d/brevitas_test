@@ -37,6 +37,7 @@ from configurations import (
     num_classes,
     starting_epoch,
     best_val_acc,
+    lr_schedule_ratio
 )
 from shutil import make_archive
 
@@ -117,7 +118,7 @@ for epoch in range(starting_epoch, epochs):
 
         eval_meters.top1.update(prec1.item(), input.size(0))
     if (epoch + 1) % lr_schedule_period == 0:
-        optimizer.param_groups[0]["lr"] *= 0.5
+        optimizer.param_groups[0]["lr"] *= lr_schedule_ratio
         log_to_file(
             file1, f"Next epoch(s) run with lr={optimizer.param_groups[0]['lr']}"
         )
