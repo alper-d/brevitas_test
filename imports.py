@@ -156,7 +156,8 @@ def prune_brevitas_model(model, layer_to_prune, SIMD=1, NumColPruned=-1) -> dict
         SIMD * NumColPruned if SIMD * NumColPruned < in_channels else in_channels - SIMD
     )
     sorting_indices = sort_tensor(layer_to_prune.weight.data)
-    channels_to_prune = sorting_indices[:prune_block_len]
+    channels_to_prune = [int(i) for i in sorting_indices[:prune_block_len]]
+    # channels_to_prune = [i for i in range(prune_block_len)]
     dep_graph = tp.DependencyGraph().build_dependency(
         model, example_inputs=example_inputs
     )
