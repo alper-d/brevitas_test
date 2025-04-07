@@ -61,15 +61,6 @@ def prune_wrapper(model, pruning_amount, pruning_mode, run_netron, folder_name):
     if run_netron:
         showInNetron(f"{onnx_path_extended}.onnx", port=8080)
         showInNetron(f"{pruned_onnx_filename}.onnx", port=8081)
-    network_info = {
-        "model_identity": model_identity,
-        "weight_decay": weight_decay,
-        "lr": lr,
-        "lr_schedule_period": lr_schedule_period,
-        "simd_list": SIMD_LIST,
-        "pruning_amount": pruning_amount,
-    }
-    pruning_data.append(network_info)
     with open(f"{pruned_onnx_filename}.json", "w") as fp:
         fp.write(json.dumps(pruning_data, indent=4, ensure_ascii=False))
     config.JIT_ENABLED = 1
@@ -114,6 +105,14 @@ def prune_all_conv_layers(model, SIMD_list, NumColPruned=-1, pruning_mode="struc
     return pruning_data
 
 
+def sort_tensor(tensor):
+    x = tensor.permute(1, 0, 2, 3)
+    x = x.reshape(tensor.shape[1], -1)
+    out = x.sum(dim=1, keepdim=True).abs()
+    sorted_indices = out.argsort(dim=0)
+    return sorted_indices.squeeze()
+
+
 def prune_brevitas_modelSIMD(model, layer_to_prune, SIMD_in=1, NumColPruned=-1) -> dict:
     SIMD_out = -1
     in_channels = layer_to_prune.in_channels
@@ -155,7 +154,8 @@ def prune_brevitas_model(model, layer_to_prune, SIMD=1, NumColPruned=-1) -> dict
     prune_block_len = (
         SIMD * NumColPruned if SIMD * NumColPruned < in_channels else in_channels - SIMD
     )
-    channels_to_prune = [i for i in range(prune_block_len)]
+    sorting_indices = sort_tensor(layer_to_prune.weight.data)
+    channels_to_prune = sorting_indices[:prune_block_len]
     dep_graph = tp.DependencyGraph().build_dependency(
         model, example_inputs=example_inputs
     )
