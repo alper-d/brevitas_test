@@ -145,6 +145,7 @@ class CNV(Module):
         # exit()
         return x
 
+
 def cnv(cfg):
     weight_bit_width = cfg.getint("QUANT", "WEIGHT_BIT_WIDTH")
     act_bit_width = cfg.getint("QUANT", "ACT_BIT_WIDTH")

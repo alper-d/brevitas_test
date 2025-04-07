@@ -10,7 +10,16 @@ import torch_pruning as tp
 # from torch_pruning import utils
 from brevitas.export import export_qonnx
 from visualize_netron import showInNetron
-from configurations import now_time, pruning_amount, pruning_mode, SqrHingeLoss
+from configurations import (
+    now_time,
+    pruning_amount,
+    pruning_mode,
+    SqrHingeLoss,
+    model_identity,
+    weight_decay,
+    lr,
+    lr_schedule_period,
+)
 
 example_inputs = torch.randn(1, 3, 32, 32)
 SIMD_LIST = [3, 32, 32, 32, 32, 32, 32, 32, 64]
@@ -27,7 +36,7 @@ def disable_jit(func):
 
 
 @disable_jit
-def prune_wrapper(model, pruning_amount, pruning_mode, run_netron, folder_name, model_identity):
+def prune_wrapper(model, pruning_amount, pruning_mode, run_netron, folder_name):
     onnx_path_extended = f"{folder_name}/extended_model"
 
     export_qonnx(
@@ -52,7 +61,15 @@ def prune_wrapper(model, pruning_amount, pruning_mode, run_netron, folder_name, 
     if run_netron:
         showInNetron(f"{onnx_path_extended}.onnx", port=8080)
         showInNetron(f"{pruned_onnx_filename}.onnx", port=8081)
-    pruning_data.append({"model_identity": model_identity})
+    network_info = {
+        "model_identity": model_identity,
+        "weight_decay": weight_decay,
+        "lr": lr,
+        "lr_schedule_period": lr_schedule_period,
+        "simd_list": SIMD_LIST,
+        "pruning_amount": pruning_amount,
+    }
+    pruning_data.append(network_info)
     with open(f"{pruned_onnx_filename}.json", "w") as fp:
         fp.write(json.dumps(pruning_data, indent=4, ensure_ascii=False))
     config.JIT_ENABLED = 1

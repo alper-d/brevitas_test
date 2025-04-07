@@ -5,7 +5,7 @@ pruning_amounts = ["0.5", "0.7", "0.8", "0.9"]
 pruning_amounts = ["0.5"]
 train_logs = []
 test_logs = []
-run_folder = "run1"
+run_folder = "run_2w2a_4layer"
 experiment_time = ""
 prefix_for_time = "Starting to write at "
 for ratio in pruning_amounts:
@@ -17,7 +17,9 @@ for ratio in pruning_amounts:
             if prefix_for_time in line:
                 experiment_time = line.removeprefix(prefix_for_time)
                 experiment_time = experiment_time.split("on")
-                experiment_time = experiment_time[0] + experiment_time[1].replace(" ", "_").removesuffix("\n")
+                experiment_time = experiment_time[0] + experiment_time[1].replace(
+                    " ", "_"
+                ).removesuffix("\n")
             elif "complete. Train" in line:
                 train_temp.append(float(line.split()[-1]))
             elif "complete. Test" in line:

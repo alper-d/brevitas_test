@@ -31,6 +31,7 @@ from configurations import (
     path_for_save,
     SqrHingeLoss,
     epochs,
+    lr_schedule_period,
     num_classes,
     starting_epoch,
     best_val_acc,
@@ -59,7 +60,7 @@ file1 = start_log_to_file(path_for_save)
 # package = torch.load(export_onnx_path2, map_location="cpu")
 # model_state_dict = package["state_dict"]
 # model.load_state_dict(model_state_dict)
-model = prune_wrapper(model, pruning_amount, pruning_mode, run_netron, path_for_save, model_identity)
+model = prune_wrapper(model, pruning_amount, pruning_mode, run_netron, path_for_save)
 # model = CNV(10, WEIGHT_BIT_WIDTH, ACT_BIT_WIDTH, 8, 3).to(device=device)
 
 eval_meters = EvalEpochMeters()
@@ -112,7 +113,11 @@ for epoch in range(starting_epoch, epochs):
             log_to_file(file1, f"Epoch: {epoch} Batch: {i} accuracy {str(prec1)}\n")
 
         eval_meters.top1.update(prec1.item(), input.size(0))
-
+    if (epoch + 1) % lr_schedule_period == 0:
+        optimizer.param_groups[0]["lr"] *= 0.5
+        log_to_file(
+            file1, f"Next epoch(s) run with lr={optimizer.param_groups[0]['lr']}"
+        )
     # Perform eval
     with torch.no_grad():
         top1avg, save_data_list = eval_model(
