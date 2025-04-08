@@ -20,7 +20,7 @@ def get_argparser():
 
 argparser = get_argparser()
 # pruning_amount = argparser.pruning_amount
-pruning_amount = [0.0, 0.0] + [0.5] * 4 + [0.0] * 3
+pruning_amount = [0.0, 0.0] + [0.2] * 4 + [0.0] * 3
 run_netron = argparser.run_netron
 pruning_mode = argparser.pruning_mode
 model_identity = argparser.model
@@ -45,7 +45,7 @@ lr_schedule_ratio = 0.8
 weight_decay = 0
 random_seed = 1
 log_freq = 10
-epochs, num_classes, starting_epoch, best_val_acc = 30, 10, 0, 0
+epochs, num_classes, starting_epoch, best_val_acc = 60, 10, 0, 0
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
