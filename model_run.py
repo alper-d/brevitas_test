@@ -1,107 +1,84 @@
 import os
+
+from dataloader import train_loader, test_loader
 import torch
 import time
-import torch.optim as optim
-import qonnx.core.onnx_exec as oxe
+
+# import qonnx.core.onnx_exec as oxe
 from imports import (
+    log_to_file,
+    start_log_to_file,
+    save_best_checkpoint,
+    export_best_onnx,
     TrainingEpochMeters,
-    SqrHingeLoss,
-    weight_decay,
-    accuracy,
-    lr,
-    prune_brevitas_model,
-    prune_brevitas_modelSIMD,
-    log_freq,
+    prune_wrapper,
     EvalEpochMeters,
     eval_model,
 )
-import torch.nn as nn
-import datetime
-from main import showInNetron
+from models_folder.models import model_with_cfg
 from qonnx.core.modelwrapper import ModelWrapper
-from torch.utils.data import DataLoader
-from torchvision import transforms
-from brevitas.export import export_qonnx
-from torchvision.datasets import MNIST, CIFAR10
-from imports import get_test_model_trained
-import argparse
-import netron
-from IPython.display import IFrame
-import onnx.numpy_helper as numpy_helper
 
+# import onnx.numpy_helper as numpy_helper
+# from onnx2torch import convert
+from configurations import (
+    run_netron,
+    pruning_mode,
+    pruning_amount,
+    model_identity,
+    get_optimizer,
+    device,
+    log_freq,
+    path_for_save,
+    pruning_type,
+    now_str,
+    SqrHingeLoss,
+    epochs,
+    lr_schedule_period,
+    num_classes,
+    starting_epoch,
+    best_val_acc,
+    lr_schedule_ratio
+)
+from shutil import make_archive
 
-def get_argparser():
-    argparser = argparse.ArgumentParser(description="put parameters")
-    argparser.add_argument("--pruning_amount", type=float, default=0.4, help="")
-    return argparser.parse_args()
-
-
-argparser = get_argparser()
-pruning_amount = argparser.pruning_amount
-
+# model_blueprint = load_model("runs/SIMD_0.9_30_Mar_2025__19_10_52/extended_model_0_9_SIMD.onnx")
 build_dir = "models_folder"
-datadir = "./data/"
-dataset = "CIFAR10"
-epoch_data = {"train": {}, "test": {}}
-epoch_data["train"][str(pruning_amount)] = []
-epoch_data["test"][str(pruning_amount)] = []
-num_classes = 10
-num_workers = 0
-batch_size = 100
-file1 = open(f"pruning_logs_{str(pruning_amount)}.txt", "a")
-now = datetime.datetime.now().strftime("%I:%M%p on %B %d, %Y")
-file1.write(f"Starting to write at {now}\nPruning Amount: {pruning_amount}")
-file1.flush()
-if True or dataset == "CIFAR10":
-    pass
-transform_to_tensor = transforms.Compose([transforms.ToTensor()])
-train_transforms_list = [
-    transforms.RandomCrop(32, padding=4),
-    transforms.RandomHorizontalFlip(),
-    transforms.ToTensor(),
-]
-transform_train = transforms.Compose(train_transforms_list)
-builder = CIFAR10
-
 export_onnx_path = build_dir + "/end2end_cnv_w1a1_export_to_download.onnx"
-showInNetron(export_onnx_path)
-model = ModelWrapper(export_onnx_path)
-model = get_test_model_trained("CNV", 1, 1)
-prune_brevitas_model(model, conv_feature_index=8, SIMD=32,NumColPruned=pruning_amount)
-prune_brevitas_model(model, conv_feature_index=11, SIMD=32,NumColPruned=pruning_amount)
-prune_brevitas_model(model, conv_feature_index=15, SIMD=32,NumColPruned=pruning_amount)
-prune_brevitas_model(model, conv_feature_index=18, SIMD=32,NumColPruned=pruning_amount)
-# model = CNV(10, WEIGHT_BIT_WIDTH, ACT_BIT_WIDTH, 8, 3).to(device=device)
-eval_meters = EvalEpochMeters()
-train_set = builder(root=datadir, train=True, download=True, transform=transform_train)
-test_set = builder(
-    root=datadir, train=False, download=True, transform=transform_to_tensor
-)
-train_loader = DataLoader(
-    train_set, batch_size=batch_size, shuffle=True, num_workers=num_workers
-)
-test_loader = DataLoader(
-    test_set, batch_size=batch_size, shuffle=False, num_workers=num_workers
-)
+export_onnx_path2 = build_dir + "/checkpoint.tar"
+model_temp = ModelWrapper(export_onnx_path)
+# model_temp2 = get_test_model_trained("CNV", 1, 1)
+model, _ = model_with_cfg(model_identity, pretrained=True)
+criterion, optimizer = get_optimizer(model)
 
-criterion = SqrHingeLoss()
-optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-criterion = criterion.to(device=device)
-starting_epoch = 1
-best_val_acc = 0
-epochs = 30
+
+# if os.path.exists(f"runs/{pruning_log_identity}/best_checkpoint.tar"):
+#    model_dict = torch.load(f"runs/{pruning_log_identity}/best_checkpoint.tar")
+#    model.load_state_dict(model_dict["state_dict"])
+#    starting_epoch = model_dict["epoch"] - 1
+#    optimizer = model_dict["optim_dict"]
+#    best_val_acc = model_dict["best_val_acc"]
+file1 = start_log_to_file(path_for_save)
+
+# actual model load
+
+# package = torch.load(export_onnx_path2, map_location="cpu")
+# model_state_dict = package["state_dict"]
+# model.load_state_dict(model_state_dict)
+model = prune_wrapper(model, pruning_amount, pruning_mode, run_netron, path_for_save)
+# model = CNV(10, WEIGHT_BIT_WIDTH, ACT_BIT_WIDTH, 8, 3).to(device=device)
+
+eval_meters = EvalEpochMeters()
+
 for epoch in range(starting_epoch, epochs):
     # Set to training mode
     model.train()
     criterion.train()
 
-    # Init metrics
     epoch_meters = TrainingEpochMeters()
     start_data_loading = time.time()
 
     for i, data in enumerate(train_loader):
-        (input, target) = data
+        input, target = data
         input = input.to(device, non_blocking=True)
         target = target.to(device, non_blocking=True)
 
@@ -126,44 +103,52 @@ for epoch in range(starting_epoch, epochs):
         output = model(input)
         loss = criterion(output, target_var)
 
-        # compute gradient and do SGD step
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
         model.clip_weights(-1, 1)
 
-        # measure elapsed time
         epoch_meters.batch_time.update(time.time() - start_batch)
         pred = output.data.argmax(1, keepdim=True)
         correct = pred.eq(target.data.view_as(pred)).sum()
         prec1 = 100.0 * correct.float() / input.size(0)
         if i % int(log_freq) == 0:
-            file1.write(f"Epoch: {epoch} Batch: {i} accuracy {str(prec1)}\n")
-            file1.flush()
+            log_to_file(file1, f"Epoch: {epoch} Batch: {i} accuracy {str(prec1)}\n")
 
         eval_meters.top1.update(prec1.item(), input.size(0))
-
+    if (epoch + 1) % lr_schedule_period == 0:
+        optimizer.param_groups[0]["lr"] *= lr_schedule_ratio
+        log_to_file(
+            file1, f"Next epoch(s) run with lr={optimizer.param_groups[0]['lr']}"
+        )
     # Perform eval
     with torch.no_grad():
         top1avg, save_data_list = eval_model(
             model, criterion, test_loader, num_classes, epoch, device
         )
-    epoch_data["test"][str(pruning_amount)].append(top1avg)
-    epoch_data["train"][str(pruning_amount)].append(eval_meters.top1.avg)
-    file1.write(
-        f"Epoch {epoch} complete. Train  accuracy {str(eval_meters.top1.avg)}\n"
+    log_to_file(
+        file1, f"Epoch {epoch} complete. Train  accuracy {str(eval_meters.top1.avg)}\n"
     )
-    file1.flush()
-    file1.write(f"Epoch {epoch} complete. Test accuracy {str(top1avg)}\n")
-    file1.flush()
-    # checkpoint
-    # Skip the actual saving as it uses up too much data
+    log_to_file(file1, f"Epoch {epoch} complete. Test accuracy {str(top1avg)}\n")
     if top1avg >= best_val_acc:
         best_val_acc = top1avg
-        # checkpoint_best(epoch, f"best_pruning_amount-{pruning_amount:.3f}.tar")
+        best_path = os.path.join(f"{path_for_save}", "best_checkpoint.tar")
+        save_best_checkpoint(model, optimizer, epoch, best_val_acc, best_path)
     else:
         pass
-        # checkpoint_best(epoch, f"checkpoint_pruning_amount-{pruning_amount:.3f}.tar")
+log_to_file(file1, f"Training complete. Best val acc= {best_val_acc}")
+# Define input shape
+example_inputs = torch.randn(1, 3, 32, 32)
 
-    # writing newline character
+# Export to QONNX format
+if os.path.exists(f"{path_for_save}/best_checkpoint.tar"):
+    model_dict = torch.load(f"{path_for_save}/best_checkpoint.tar")
+    model.load_state_dict(model_dict["state_dict"])
+export_best_onnx(
+    model,
+    example_inputs=example_inputs,
+    export_path=f"{path_for_save}/best_model_qonnx.onnx",
+)
+file1.close()
+make_archive(f"run_zip/{pruning_type}_{now_str}", "zip", path_for_save)
