@@ -114,10 +114,10 @@ for epoch in range(starting_epoch, epochs):
         correct = pred.eq(target.data.view_as(pred)).sum()
         prec1 = 100.0 * correct.float() / input.size(0)
         if i % int(log_freq) == 0:
-            log_to_file(file1, f"Epoch: {epoch} Batch: {i} accuracy {str(prec1)}\n")
+            log_to_file(file1, f"Epoch: {epoch} Batch: {i} accuracy {str(prec1)}")
 
         eval_meters.top1.update(prec1.item(), input.size(0))
-    if (epoch + 1) % lr_schedule_period == 0:
+    if (epoch + 1) % lr_schedule_period == 0 and (epoch + 1) < 17:
         optimizer.param_groups[0]["lr"] *= lr_schedule_ratio
         log_to_file(
             file1, f"Next epoch(s) run with lr={optimizer.param_groups[0]['lr']}"
@@ -128,9 +128,9 @@ for epoch in range(starting_epoch, epochs):
             model, criterion, test_loader, num_classes, epoch, device
         )
     log_to_file(
-        file1, f"Epoch {epoch} complete. Train  accuracy {str(eval_meters.top1.avg)}\n"
+        file1, f"Epoch {epoch} complete. Train  accuracy {str(eval_meters.top1.avg)}"
     )
-    log_to_file(file1, f"Epoch {epoch} complete. Test accuracy {str(top1avg)}\n")
+    log_to_file(file1, f"Epoch {epoch} complete. Test accuracy {str(top1avg)}")
     if top1avg >= best_val_acc:
         best_val_acc = top1avg
         best_path = os.path.join(f"{path_for_save}", "best_checkpoint.tar")

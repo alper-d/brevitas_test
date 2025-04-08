@@ -338,7 +338,7 @@ def eval_model(model, criterion, test_loader, num_classes=10, epoch=-1, device="
 
 
 def log_to_file(file, text):
-    file.write(text)
+    file.write(text + "\n")
     file.flush()
 
 
