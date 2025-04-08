@@ -4,7 +4,6 @@
 from configparser import ConfigParser
 import os
 
-import torch
 from torch import hub
 
 __all__ = [
