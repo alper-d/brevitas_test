@@ -5,12 +5,10 @@
 
 # from finn.util.basic import make_build_dir
 # from finn.util.visualization import showInNetron
-import os
 from qonnx.core.modelwrapper import ModelWrapper
 from imports import get_test_model_trained, prune_brevitas_model
 
 import onnx.numpy_helper as numpy_helper
-from onnx2torch import convert
 
 # build_dir = os.environ["FINN_BUILD_DIR"]
 
@@ -25,7 +23,7 @@ if __name__ == "__main__":
     path = "untouched_models_folder/end2end_cnv_w1a1_export_to_download.onnx"
     model = ModelWrapper(path)
     x = model.graph.initializer
-    showInNetron(path)
+    # showInNetron(path)
     model = get_test_model_trained("CNV", 1, 1)
     prune_brevitas_model(
         model,
