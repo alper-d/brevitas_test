@@ -364,5 +364,6 @@ SIMD_LIST: {}
         lr_schedule_ratio,
         SIMD_LIST,
     )
+    print(log_str)
     log_to_file(file1, log_str)
     return file1
