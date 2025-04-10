@@ -48,7 +48,7 @@ export_onnx_path2 = build_dir + "/checkpoint.tar"
 model_temp = ModelWrapper(export_onnx_path)
 # model_temp2 = get_test_model_trained("CNV", 1, 1)
 model, _ = model_with_cfg(model_identity, pretrained=False)
-criterion, optimizer = get_optimizer(model)
+
 
 
 # if os.path.exists(f"runs/{pruning_log_identity}/best_checkpoint.tar"):
@@ -65,6 +65,7 @@ file1 = start_log_to_file(path_for_save)
 # model_state_dict = package["state_dict"]
 # model.load_state_dict(model_state_dict)
 model = prune_wrapper(model, pruning_amount, pruning_mode, run_netron, path_for_save)
+criterion, optimizer = get_optimizer(model)
 # model = CNV(10, WEIGHT_BIT_WIDTH, ACT_BIT_WIDTH, 8, 3).to(device=device)
 
 eval_meters = EvalEpochMeters()
