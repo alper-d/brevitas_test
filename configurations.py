@@ -20,7 +20,7 @@ def get_argparser():
 
 argparser = get_argparser()
 # pruning_amount = argparser.pruning_amount
-pruning_amount = [0.0, 0.0] + [0.5] * 4 + [0.0] * 3
+pruning_amount = [0.0] * 4 + [0.5] * 4 + [0.0] * 1
 run_netron = argparser.run_netron
 pruning_mode = argparser.pruning_mode
 model_identity = argparser.model
@@ -39,7 +39,7 @@ experiments = "."
 datadir = "./data/"
 batch_size = 100
 num_workers = 6
-lr = 0.02
+lr = 0.03
 lr_schedule_period = 40
 lr_schedule_ratio = 0.5
 weight_decay = 0

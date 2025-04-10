@@ -19,7 +19,7 @@ from configurations import (
     weight_decay,
     lr,
     lr_schedule_period,
-    lr_schedule_ratio
+    lr_schedule_ratio,
 )
 
 example_inputs = torch.randn(1, 3, 32, 32)
@@ -201,6 +201,7 @@ def prune_brevitas_model(model, layer_to_prune, SIMD=1, NumColPruned=-1) -> dict
         pruner.update_regularizer()  # if the model has been pruned, we need to update the regularizer
         pruner.regularize(model)
 
+
 def get_pruning_len(in_channels, ratio):
     """
     No SIMD
@@ -211,6 +212,7 @@ def get_pruning_len(in_channels, ratio):
         return in_channels
     else:
         return int(in_channels * ratio)
+
 
 def save_best_checkpoint(best_model, optimizer, epoch, best_val_acc, best_path):
     torch.save(

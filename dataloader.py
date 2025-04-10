@@ -1,8 +1,14 @@
 from torchvision.datasets import CIFAR10
+import random
+import torch
 
 # from torchvision.datasets import MNIST
 from torchvision import transforms
 from torch.utils.data import DataLoader
+
+random.seed(1)
+torch.manual_seed(1)
+torch.cuda.manual_seed_all(1)
 
 builder = CIFAR10
 datadir = "./data/"

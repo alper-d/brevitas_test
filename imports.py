@@ -19,7 +19,7 @@ from configurations import (
     weight_decay,
     lr,
     lr_schedule_period,
-    lr_schedule_ratio
+    lr_schedule_ratio,
 )
 
 example_inputs = torch.randn(1, 3, 32, 32)

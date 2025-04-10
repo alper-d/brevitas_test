@@ -37,7 +37,7 @@ from configurations import (
     num_classes,
     starting_epoch,
     best_val_acc,
-    lr_schedule_ratio
+    lr_schedule_ratio,
 )
 from shutil import make_archive
 

@@ -1,11 +1,21 @@
+import argparse
 import matplotlib.pyplot as plt
+
+
+def get_argparser():
+    argparser = argparse.ArgumentParser(description="put parameters")
+    argparser.add_argument("--path", type=str, default="", help="")
+    return argparser.parse_args()
+
+
+argparser = get_argparser()
 
 # pruning_amounts = ["0.3", "0.5", "0.6", "0.7", "0.8", "0.9"]
 pruning_amounts = ["0.5", "0.7", "0.8", "0.9"]
 pruning_amounts = ["0.5"]
 train_logs = []
 test_logs = []
-run_folder = "run_2w2a_4layer"
+run_folder = argparser.path
 experiment_time = ""
 prefix_for_time = "Starting to write at "
 for ratio in pruning_amounts:
