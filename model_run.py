@@ -3,6 +3,7 @@ import os
 from dataloader import train_loader, test_loader
 import torch
 import time
+from chart_maker import plot_graph
 
 # import qonnx.core.onnx_exec as oxe
 from imports_iterative import (
@@ -48,7 +49,6 @@ export_onnx_path2 = build_dir + "/checkpoint.tar"
 model_temp = ModelWrapper(export_onnx_path)
 # model_temp2 = get_test_model_trained("CNV", 1, 1)
 model, _ = model_with_cfg(model_identity, pretrained=False)
-
 
 
 # if os.path.exists(f"runs/{pruning_log_identity}/best_checkpoint.tar"):
@@ -132,6 +132,7 @@ for epoch in range(starting_epoch, epochs):
         file1, f"Epoch {epoch} complete. Train  accuracy {str(eval_meters.top1.avg)}"
     )
     log_to_file(file1, f"Epoch {epoch} complete. Test accuracy {str(top1avg)}")
+    plot_graph(path_for_save)
     if top1avg >= best_val_acc:
         best_val_acc = top1avg
         best_path = os.path.join(f"{path_for_save}", "best_checkpoint.tar")
