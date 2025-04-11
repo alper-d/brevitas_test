@@ -132,7 +132,6 @@ for epoch in range(starting_epoch, epochs):
         file1, f"Epoch {epoch} complete. Train  accuracy {str(eval_meters.top1.avg)}"
     )
     log_to_file(file1, f"Epoch {epoch} complete. Test accuracy {str(top1avg)}")
-    plot_graph(path_for_save)
     if top1avg >= best_val_acc:
         best_val_acc = top1avg
         best_path = os.path.join(f"{path_for_save}", "best_checkpoint.tar")
