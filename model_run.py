@@ -71,6 +71,7 @@ criterion, optimizer = get_optimizer(model)
 
 eval_meters = EvalEpochMeters()
 scheduler = get_scheduler(optimizer=optimizer, T_max=30) if use_scheduler else None
+model.to(device)
 for epoch in range(starting_epoch, epochs):
     # Set to training mode
     model.train()
