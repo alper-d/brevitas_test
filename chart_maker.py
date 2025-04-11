@@ -42,7 +42,7 @@ def plot_graph(run_folder):
     figure_size = (16, 10)
     plt.figure(figsize=figure_size)  # Set figure size
     for i, ratio in enumerate(pruning_amounts):
-        plt.plot(train_logs[i], label=f"Ratio={ratio}")
+        plt.plot(train_logs[i])
 
     # Add labels and title
     plt.title("Train")
@@ -59,7 +59,7 @@ def plot_graph(run_folder):
 
     plt.figure(figsize=figure_size)  # Set figure size
     for i, ratio in enumerate(pruning_amounts):
-        plt.plot(test_logs[i], label=f"Ratio={ratio}")
+        plt.plot(test_logs[i], marker="o")
 
     # Add labels and title
     plt.title("Test")
