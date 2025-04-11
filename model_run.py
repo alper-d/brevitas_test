@@ -3,7 +3,7 @@ import os
 from dataloader import train_loader, test_loader
 import torch
 import time
-from chart_maker import plot_graph
+from torch.optim.lr_scheduler import CosineAnnealingLR
 
 # import qonnx.core.onnx_exec as oxe
 from imports_iterative import (
@@ -69,7 +69,7 @@ criterion, optimizer = get_optimizer(model)
 # model = CNV(10, WEIGHT_BIT_WIDTH, ACT_BIT_WIDTH, 8, 3).to(device=device)
 
 eval_meters = EvalEpochMeters()
-
+scheduler = CosineAnnealingLR(optimizer=optimizer, T_max=30)
 for epoch in range(starting_epoch, epochs):
     # Set to training mode
     model.train()
@@ -118,11 +118,15 @@ for epoch in range(starting_epoch, epochs):
             log_to_file(file1, f"Epoch: {epoch} Batch: {i} accuracy {str(prec1)}")
 
         eval_meters.top1.update(prec1.item(), input.size(0))
-    if (epoch + 1) % lr_schedule_period == 0 and (epoch + 1) < 17:
+        break
+    log_str = "LR no update"
+    if scheduler:
+        scheduler.step()
+        log_str = "Scheduler step"
+    elif (epoch + 1) % lr_schedule_period == 0:
         optimizer.param_groups[0]["lr"] *= lr_schedule_ratio
-        log_to_file(
-            file1, f"Next epoch(s) run with lr={optimizer.param_groups[0]['lr']}"
-        )
+        log_str = f"Next epoch(s) run with lr={optimizer.param_groups[0]['lr']}"
+    log_to_file(file1, log_str)
     # Perform eval
     with torch.no_grad():
         top1avg, save_data_list = eval_model(
