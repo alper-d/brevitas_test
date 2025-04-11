@@ -5,7 +5,7 @@
 #SBATCH --time 1:30:00
 #SBATCH --job-name pruning_thesis
 #SBATCH --partition rivulet
-
+#SBATCH --output run_out
 source ~/.bashrc
 
 echo "Running"
