@@ -12,6 +12,7 @@ def get_argparser():
     argparser = argparse.ArgumentParser(description="put parameters")
     argparser.add_argument("--pruning_amount", type=float, default=0.9, help="")
     argparser.add_argument("--run_netron", type=bool, default=False, help="")
+    argparser.add_argument("--use_scheduler", type=bool, default=True, help="")
     argparser.add_argument("--model", type=str, default="cnv_1w1a", help="")
     argparser.add_argument(
         "--pruning_mode", type=str, default="structured", choices=["structured", "SIMD"]
@@ -24,8 +25,8 @@ argparser = get_argparser()
 pruning_amount = [0.0] * 4 + [0.5] * 4 + [0.0] * 1
 run_netron = argparser.run_netron
 pruning_mode = argparser.pruning_mode
+use_scheduler = argparser.use_scheduler
 model_identity = argparser.model
-model_identity = "cnv_1w1a"
 
 now_time = datetime.datetime.now()
 now_str = now_time.strftime("%d_%b_%Y__%H_%M_%S")

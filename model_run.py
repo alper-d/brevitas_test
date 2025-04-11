@@ -26,6 +26,7 @@ from configurations import (
     pruning_amount,
     model_identity,
     get_optimizer,
+    use_scheduler,
     device,
     log_freq,
     path_for_save,
@@ -69,7 +70,7 @@ criterion, optimizer = get_optimizer(model)
 # model = CNV(10, WEIGHT_BIT_WIDTH, ACT_BIT_WIDTH, 8, 3).to(device=device)
 
 eval_meters = EvalEpochMeters()
-scheduler = get_scheduler(optimizer=optimizer, T_max=30)
+scheduler = get_scheduler(optimizer=optimizer, T_max=30) if use_scheduler else None
 for epoch in range(starting_epoch, epochs):
     # Set to training mode
     model.train()
@@ -121,7 +122,7 @@ for epoch in range(starting_epoch, epochs):
     log_str = "LR no update"
     if scheduler:
         scheduler.step()
-        log_str = "Scheduler step"
+        log_str = f"Scheduler step. Next epoch(s) run with lr={scheduler.get_last_lr()}"
     elif (epoch + 1) % lr_schedule_period == 0:
         optimizer.param_groups[0]["lr"] *= lr_schedule_ratio
         log_str = f"Next epoch(s) run with lr={optimizer.param_groups[0]['lr']}"
