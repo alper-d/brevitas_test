@@ -5,7 +5,7 @@ import torch
 import time
 
 # import qonnx.core.onnx_exec as oxe
-from imports_iterative import (
+from imports import (
     log_to_file,
     start_log_to_file,
     save_best_checkpoint,
