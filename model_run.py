@@ -3,7 +3,6 @@ import os
 from dataloader import train_loader, test_loader
 import torch
 import time
-from torch.optim.lr_scheduler import CosineAnnealingLR
 
 # import qonnx.core.onnx_exec as oxe
 from imports_iterative import (
@@ -39,6 +38,7 @@ from configurations import (
     starting_epoch,
     best_val_acc,
     lr_schedule_ratio,
+    get_scheduler,
 )
 from shutil import make_archive
 
@@ -48,7 +48,7 @@ export_onnx_path = build_dir + "/end2end_cnv_w1a1_export_to_download.onnx"
 export_onnx_path2 = build_dir + "/checkpoint.tar"
 model_temp = ModelWrapper(export_onnx_path)
 # model_temp2 = get_test_model_trained("CNV", 1, 1)
-model, _ = model_with_cfg(model_identity, pretrained=False)
+model, _ = model_with_cfg(model_identity, pretrained=True)
 
 
 # if os.path.exists(f"runs/{pruning_log_identity}/best_checkpoint.tar"):
@@ -69,7 +69,7 @@ criterion, optimizer = get_optimizer(model)
 # model = CNV(10, WEIGHT_BIT_WIDTH, ACT_BIT_WIDTH, 8, 3).to(device=device)
 
 eval_meters = EvalEpochMeters()
-scheduler = CosineAnnealingLR(optimizer=optimizer, T_max=30)
+scheduler = get_scheduler(optimizer=optimizer, T_max=30)
 for epoch in range(starting_epoch, epochs):
     # Set to training mode
     model.train()
@@ -118,7 +118,6 @@ for epoch in range(starting_epoch, epochs):
             log_to_file(file1, f"Epoch: {epoch} Batch: {i} accuracy {str(prec1)}")
 
         eval_meters.top1.update(prec1.item(), input.size(0))
-        break
     log_str = "LR no update"
     if scheduler:
         scheduler.step()

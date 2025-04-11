@@ -3,6 +3,7 @@ import torch
 import torch.optim as optim
 import torch.nn as nn
 from torch.autograd import Function
+from torch.optim.lr_scheduler import CosineAnnealingLR
 import os
 import datetime
 
@@ -24,7 +25,7 @@ pruning_amount = [0.0] * 4 + [0.5] * 4 + [0.0] * 1
 run_netron = argparser.run_netron
 pruning_mode = argparser.pruning_mode
 model_identity = argparser.model
-model_identity = "cnv_4w4a"
+model_identity = "cnv_1w1a"
 
 now_time = datetime.datetime.now()
 now_str = now_time.strftime("%d_%b_%Y__%H_%M_%S")
@@ -39,8 +40,8 @@ experiments = "."
 datadir = "./data/"
 batch_size = 100
 num_workers = 6
-lr = 0.03
-lr_schedule_period = 40
+lr = 0.015
+lr_schedule_period = 30
 lr_schedule_ratio = 0.5
 weight_decay = 0
 random_seed = 1
@@ -85,3 +86,7 @@ def get_optimizer(model):
 
     criterion = criterion.to(device=device)
     return criterion, optimizer
+
+
+def get_scheduler(optimizer, T_max):
+    return CosineAnnealingLR(optimizer=optimizer, T_max=30)
