@@ -90,4 +90,4 @@ def get_optimizer(model):
 
 
 def get_scheduler(optimizer, T_max):
-    return CosineAnnealingLR(optimizer=optimizer, T_max=30)
+    return CosineAnnealingLR(optimizer=optimizer, T_max=100)
