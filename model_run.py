@@ -26,6 +26,7 @@ from configurations import (
     pruning_amount,
     model_identity,
     get_optimizer,
+    eta_min,
     use_scheduler,
     device,
     log_freq,
@@ -70,7 +71,7 @@ criterion, optimizer = get_optimizer(model)
 # model = CNV(10, WEIGHT_BIT_WIDTH, ACT_BIT_WIDTH, 8, 3).to(device=device)
 
 eval_meters = EvalEpochMeters()
-scheduler = get_scheduler(optimizer=optimizer, T_max=300) if use_scheduler else None
+scheduler = get_scheduler(optimizer=optimizer, T_max=500, eta_min=eta_min) if use_scheduler else None
 model.to(device)
 for epoch in range(starting_epoch, epochs):
     # Set to training mode

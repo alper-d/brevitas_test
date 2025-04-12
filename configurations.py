@@ -44,6 +44,7 @@ num_workers = 6
 lr = 0.015
 lr_schedule_period = 30
 lr_schedule_ratio = 0.5
+eta_min = lr*(0.5**8)
 weight_decay = 0
 random_seed = 1
 log_freq = 10
@@ -89,5 +90,5 @@ def get_optimizer(model):
     return criterion, optimizer
 
 
-def get_scheduler(optimizer, T_max):
-    return CosineAnnealingLR(optimizer=optimizer, T_max=T_max)
+def get_scheduler(optimizer, T_max, eta_min):
+    return CosineAnnealingLR(optimizer=optimizer, T_max=T_max, eta_min=eta_min)
