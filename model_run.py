@@ -71,7 +71,7 @@ criterion, optimizer = get_optimizer(model)
 # model = CNV(10, WEIGHT_BIT_WIDTH, ACT_BIT_WIDTH, 8, 3).to(device=device)
 
 eval_meters = EvalEpochMeters()
-scheduler = get_scheduler(optimizer=optimizer, T_max=100, eta_min=eta_min) if use_scheduler else None
+scheduler = get_scheduler(optimizer=optimizer, T_max=500, eta_min=eta_min) if use_scheduler else None
 model.to(device)
 for epoch in range(starting_epoch, epochs):
     # Set to training mode
@@ -123,9 +123,8 @@ for epoch in range(starting_epoch, epochs):
         eval_meters.top1.update(prec1.item(), input.size(0))
     log_str = "LR no update"
     if scheduler:
-        if epoch < 99:
-            scheduler.step()
-            log_str = f"Scheduler step. Next epoch(s) run with lr={scheduler.get_last_lr()}"
+        scheduler.step()
+        log_str = f"Scheduler step. Next epoch(s) run with lr={scheduler.get_last_lr()}"
     elif (epoch + 1) % lr_schedule_period == 0:
         optimizer.param_groups[0]["lr"] *= lr_schedule_ratio
         log_str = f"Next epoch(s) run with lr={optimizer.param_groups[0]['lr']}"
