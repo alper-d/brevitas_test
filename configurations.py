@@ -22,7 +22,7 @@ def get_argparser():
 
 argparser = get_argparser()
 # pruning_amount = argparser.pruning_amount
-pruning_amount = [0.0] * 4 + [0.5] * 4 + [0.0] * 1
+pruning_amount = [0.5] * 4 + [0.5] * 4 + [0.5] * 1
 run_netron = argparser.run_netron
 pruning_mode = argparser.pruning_mode
 use_scheduler = argparser.use_scheduler
@@ -90,4 +90,4 @@ def get_optimizer(model):
 
 
 def get_scheduler(optimizer, T_max):
-    return CosineAnnealingLR(optimizer=optimizer, T_max=100)
+    return CosineAnnealingLR(optimizer=optimizer, T_max=T_max)

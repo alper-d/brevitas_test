@@ -70,7 +70,7 @@ criterion, optimizer = get_optimizer(model)
 # model = CNV(10, WEIGHT_BIT_WIDTH, ACT_BIT_WIDTH, 8, 3).to(device=device)
 
 eval_meters = EvalEpochMeters()
-scheduler = get_scheduler(optimizer=optimizer, T_max=30) if use_scheduler else None
+scheduler = get_scheduler(optimizer=optimizer, T_max=300) if use_scheduler else None
 model.to(device)
 for epoch in range(starting_epoch, epochs):
     # Set to training mode

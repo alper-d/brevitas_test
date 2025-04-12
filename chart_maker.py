@@ -17,9 +17,11 @@ def plot_graph(run_folder):
     pruning_amounts = ["0.5"]
     train_logs = []
     test_logs = []
+    lr_logs = []
     run_folder = argparser.path
     experiment_time = ""
     prefix_for_time = "Starting to write at "
+    prefix_for_lr = "Scheduler step. Next epoch(s) run with lr=["
     for ratio in pruning_amounts:
         train_temp = []
         test_temp = []
@@ -32,6 +34,10 @@ def plot_graph(run_folder):
                     experiment_time = experiment_time[0] + experiment_time[1].replace(
                         " ", "_"
                     ).removesuffix("\n")
+                elif prefix_for_lr in line:
+                    lr = line.removeprefix(prefix_for_lr)
+                    lr = lr.removesuffix("]\n")
+                    lr_logs.append(float(lr))
                 elif "complete. Train" in line:
                     train_temp.append(float(line.split()[-1]))
                 elif "complete. Test" in line:
@@ -51,7 +57,7 @@ def plot_graph(run_folder):
 
     # Add grid and legend
     plt.grid(True, linestyle="--", alpha=0.5)
-    plt.legend()
+    #plt.legend()
 
     # Show the plot
     # plt.show()
@@ -68,11 +74,28 @@ def plot_graph(run_folder):
 
     # Add grid and legend
     plt.grid(True, linestyle="--", alpha=0.5)
-    plt.legend()
+    #plt.legend()
 
     # Show the plot
     # plt.show()
     plt.savefig(f"./{run_folder}/test_{experiment_time}.png")
+
+    plt.figure(figsize=figure_size)  # Set figure size
+
+    plt.plot(lr_logs)
+
+    # Add labels and title
+    plt.title("Learning Rate")
+    plt.xlabel("Epoch")
+    plt.ylabel("Value")
+
+    # Add grid and legend
+    plt.grid(True, linestyle="--", alpha=0.5)
+    #plt.legend()
+
+    # Show the plot
+    # plt.show()
+    plt.savefig(f"./{run_folder}/lr_{experiment_time}.png")
 
 
 if __name__ == "__main__":
