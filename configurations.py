@@ -45,7 +45,7 @@ shutil.copyfile("./model_run.py", f"{path_for_save}/model_run.py")
 network = "cnv"
 experiments = "."
 datadir = "./data/"
-batch_size = 100
+batch_size = 400
 num_workers = 6
 lr = 0.01
 lr_schedule_period = 30

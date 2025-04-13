@@ -5,6 +5,7 @@ import torch
 # from torchvision.datasets import MNIST
 from torchvision import transforms
 from torch.utils.data import DataLoader
+from configurations import batch_size
 
 random.seed(1)
 torch.manual_seed(1)
@@ -14,7 +15,7 @@ builder = CIFAR10
 datadir = "./data/"
 dataset = "CIFAR10"
 num_workers = 0
-batch_size = 200
+
 
 if True or dataset == "CIFAR10":
     pass
