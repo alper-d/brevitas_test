@@ -3,7 +3,7 @@ import torch
 import torch.optim as optim
 import torch.nn as nn
 from torch.autograd import Function
-from torch.optim.lr_scheduler import CosineAnnealingLR
+from torch.optim.lr_scheduler import CosineAnnealingLR, CosineAnnealingWarmRestarts
 import os
 import datetime
 
@@ -44,7 +44,8 @@ num_workers = 6
 lr = 0.015
 lr_schedule_period = 30
 lr_schedule_ratio = 0.5
-eta_min = lr*(0.5**8)
+eta_min = lr * (0.5**8)
+T_max = 40
 weight_decay = 0
 random_seed = 1
 log_freq = 10
@@ -91,4 +92,5 @@ def get_optimizer(model):
 
 
 def get_scheduler(optimizer, T_max, eta_min):
-    return CosineAnnealingLR(optimizer=optimizer, T_max=T_max, eta_min=eta_min)
+    # return CosineAnnealingLR(optimizer=optimizer, T_max=T_max, eta_min=eta_min)
+    return CosineAnnealingWarmRestarts(optimizer=optimizer, T_0=T_max, eta_min=eta_min)

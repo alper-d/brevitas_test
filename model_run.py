@@ -33,6 +33,7 @@ from configurations import (
     path_for_save,
     pruning_type,
     now_str,
+    T_max,
     SqrHingeLoss,
     epochs,
     lr_schedule_period,
@@ -71,8 +72,13 @@ criterion, optimizer = get_optimizer(model)
 # model = CNV(10, WEIGHT_BIT_WIDTH, ACT_BIT_WIDTH, 8, 3).to(device=device)
 
 eval_meters = EvalEpochMeters()
-scheduler = get_scheduler(optimizer=optimizer, T_max=500, eta_min=eta_min) if use_scheduler else None
+scheduler = (
+    get_scheduler(optimizer=optimizer, T_max=T_max, eta_min=eta_min)
+    if use_scheduler
+    else None
+)
 model.to(device)
+iters = len(train_loader)
 for epoch in range(starting_epoch, epochs):
     # Set to training mode
     model.train()
@@ -110,7 +116,9 @@ for epoch in range(starting_epoch, epochs):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-
+        scheduler.step(epoch + i / iters)
+        log_str = f"Scheduler step. Next epoch(s) run with lr={scheduler.get_last_lr()}"
+        log_to_file(file1, log_str)
         model.clip_weights(-1, 1)
 
         epoch_meters.batch_time.update(time.time() - start_batch)
@@ -123,8 +131,9 @@ for epoch in range(starting_epoch, epochs):
         eval_meters.top1.update(prec1.item(), input.size(0))
     log_str = "LR no update"
     if scheduler:
-        scheduler.step()
-        log_str = f"Scheduler step. Next epoch(s) run with lr={scheduler.get_last_lr()}"
+        pass
+        # scheduler.step()
+        # log_str = f"Scheduler step. Next epoch(s) run with lr={scheduler.get_last_lr()}"
     elif (epoch + 1) % lr_schedule_period == 0:
         optimizer.param_groups[0]["lr"] *= lr_schedule_ratio
         log_str = f"Next epoch(s) run with lr={optimizer.param_groups[0]['lr']}"

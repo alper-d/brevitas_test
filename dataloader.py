@@ -14,7 +14,7 @@ builder = CIFAR10
 datadir = "./data/"
 dataset = "CIFAR10"
 num_workers = 0
-batch_size = 100
+batch_size = 200
 
 if True or dataset == "CIFAR10":
     pass

@@ -57,7 +57,7 @@ def plot_graph(run_folder):
 
     # Add grid and legend
     plt.grid(True, linestyle="--", alpha=0.5)
-    #plt.legend()
+    # plt.legend()
 
     # Show the plot
     # plt.show()
@@ -74,7 +74,7 @@ def plot_graph(run_folder):
 
     # Add grid and legend
     plt.grid(True, linestyle="--", alpha=0.5)
-    #plt.legend()
+    # plt.legend()
 
     # Show the plot
     # plt.show()
@@ -91,7 +91,7 @@ def plot_graph(run_folder):
 
     # Add grid and legend
     plt.grid(True, linestyle="--", alpha=0.5)
-    #plt.legend()
+    # plt.legend()
 
     # Show the plot
     # plt.show()
