@@ -51,7 +51,7 @@ lr = 0.01
 lr_schedule_period = 30
 lr_schedule_ratio = 0.5
 eta_min = lr * (0.5**8)
-T_max = 10
+T_max = 50
 T_mult = 2
 weight_decay = 0
 random_seed = 1
@@ -99,10 +99,10 @@ def get_optimizer(model):
 
 
 def get_scheduler(optimizer, T_max, eta_min, T_mult=1):
-    # return CosineAnnealingLR(optimizer=optimizer, T_max=T_max, eta_min=eta_min)
-    # return CosineAnnealingWarmRestarts(
-    #    optimizer=optimizer, T_0=T_max, T_mult=T_mult, eta_min=eta_min
-    # )
-    return MultiStepLR(
-        optimizer=optimizer, milestones=[30, 80, 140, 200, 260], gamma=0.5
+    #return CosineAnnealingLR(optimizer=optimizer, T_max=T_max, eta_min=eta_min)
+    return CosineAnnealingWarmRestarts(
+       optimizer=optimizer, T_0=T_max, T_mult=T_mult, eta_min=eta_min
     )
+    #return MultiStepLR(
+    #    optimizer=optimizer, milestones=[30, 80, 140, 200, 260], gamma=0.5
+    #)

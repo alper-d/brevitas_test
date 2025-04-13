@@ -117,9 +117,9 @@ for epoch in range(starting_epoch, epochs):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        # scheduler.step(epoch + i / iters)
-        # log_str = f"Scheduler step. Next epoch(s) run with lr={scheduler.get_last_lr()}"
-        # log_to_file(file1, log_str)
+        scheduler.step(epoch + i / iters)
+        log_str = f"Scheduler step. Next epoch(s) run with lr={scheduler.get_last_lr()}"
+        log_to_file(file1, log_str)
         model.clip_weights(-1, 1)
 
         epoch_meters.batch_time.update(time.time() - start_batch)
@@ -132,9 +132,10 @@ for epoch in range(starting_epoch, epochs):
         eval_meters.top1.update(prec1.item(), input.size(0))
     log_str = "LR no update"
     if scheduler:
-        scheduler.step(epoch + 1)
+        pass
+        #scheduler.step(epoch + 1)
         # scheduler.step()
-        log_str = f"Scheduler step. Next epoch(s) run with lr={scheduler.get_last_lr()}"
+        #log_str = f"Scheduler step. Next epoch(s) run with lr={scheduler.get_last_lr()}"
     elif (epoch + 1) % lr_schedule_period == 0:
         optimizer.param_groups[0]["lr"] *= lr_schedule_ratio
         log_str = f"Next epoch(s) run with lr={optimizer.param_groups[0]['lr']}"
