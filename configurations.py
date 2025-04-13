@@ -3,7 +3,11 @@ import torch
 import torch.optim as optim
 import torch.nn as nn
 from torch.autograd import Function
-from torch.optim.lr_scheduler import CosineAnnealingLR, CosineAnnealingWarmRestarts
+from torch.optim.lr_scheduler import (
+    CosineAnnealingLR,
+    CosineAnnealingWarmRestarts,
+    MultiStepLR,
+)
 import os
 import datetime
 import shutil
@@ -96,6 +100,9 @@ def get_optimizer(model):
 
 def get_scheduler(optimizer, T_max, eta_min, T_mult=1):
     # return CosineAnnealingLR(optimizer=optimizer, T_max=T_max, eta_min=eta_min)
-    return CosineAnnealingWarmRestarts(
-        optimizer=optimizer, T_0=T_max, T_mult=T_mult, eta_min=eta_min
+    # return CosineAnnealingWarmRestarts(
+    #    optimizer=optimizer, T_0=T_max, T_mult=T_mult, eta_min=eta_min
+    # )
+    return MultiStepLR(
+        optimizer=optimizer, milestones=[30, 80, 140, 200, 260], gamma=0.5
     )
