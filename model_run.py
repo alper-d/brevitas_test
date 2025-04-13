@@ -34,6 +34,7 @@ from configurations import (
     pruning_type,
     now_str,
     T_max,
+    T_mult,
     SqrHingeLoss,
     epochs,
     lr_schedule_period,
@@ -73,7 +74,7 @@ criterion, optimizer = get_optimizer(model)
 
 eval_meters = EvalEpochMeters()
 scheduler = (
-    get_scheduler(optimizer=optimizer, T_max=T_max, eta_min=eta_min)
+    get_scheduler(optimizer=optimizer, T_max=T_max, eta_min=eta_min, T_mult=T_mult)
     if use_scheduler
     else None
 )
