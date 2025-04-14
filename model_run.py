@@ -131,7 +131,7 @@ for epoch in range(starting_epoch, epochs):
 
         eval_meters.top1.update(prec1.item(), input.size(0))
     log_str = "LR no update"
-    if scheduler:
+    if scheduler and epoch <= 348:
         #scheduler.step(epoch + 1)
         scheduler.step()
         log_str = f"Scheduler step. Next epoch(s) run with lr={scheduler.get_last_lr()}"

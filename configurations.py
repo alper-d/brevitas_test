@@ -50,13 +50,13 @@ num_workers = 6
 lr = 0.01
 lr_schedule_period = 30
 lr_schedule_ratio = 0.5
-eta_min = lr * (0.5**8)
+eta_min = lr * (0.5**7)
 T_max = 50
 T_mult = 2
 weight_decay = 0
 random_seed = 1
 log_freq = 10
-epochs, num_classes, starting_epoch, best_val_acc = 500, 10, 0, 0
+epochs, num_classes, starting_epoch, best_val_acc = 1000, 10, 0, 0
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
