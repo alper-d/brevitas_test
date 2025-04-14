@@ -40,8 +40,8 @@ if not os.path.exists(f"runs/{pruning_type}"):
     os.mkdir(f"runs/{pruning_type}")
 os.mkdir(f"runs/{pruning_type}/{now_str}")
 path_for_save = f"runs/{pruning_type}/{now_str}"
-shutil.copyfile("./configurations.py", f"{path_for_save}/configurations.py")
-shutil.copyfile("./model_run.py", f"{path_for_save}/model_run.py")
+shutil.copy2("./configurations.py", path_for_save)
+shutil.copy2("./model_run.py", path_for_save)
 network = "cnv"
 experiments = "."
 datadir = "./data/"
