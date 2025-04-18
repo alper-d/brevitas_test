@@ -6,13 +6,20 @@
 # from finn.util.basic import make_build_dir
 # from finn.util.visualization import showInNetron
 from qonnx.core.modelwrapper import ModelWrapper
-from imports import get_test_model_trained, prune_brevitas_model
-
+import os
+import torch
 import onnx.numpy_helper as numpy_helper
-
+from models_folder.models import model_with_cfg
 # build_dir = os.environ["FINN_BUILD_DIR"]
-
-
+from configurations_delete_later import (
+    run_netron,
+    model_identity,
+    pruning_mode,
+    pruning_amount,
+    path_for_save
+)
+from brevitas.nn import QuantConv2d
+from imports_delete_later import prune_wrapper, export_best_onnx
 def print_hi(name):
     # Use a breakpoint in the code line below to debug your script.
     print(f"Hi, {name}")  # Press ⌘F8 to toggle the breakpoint.
@@ -20,6 +27,23 @@ def print_hi(name):
 
 # Press the green button in the gutter to run the script.
 if __name__ == "__main__":
+    model, _ = model_with_cfg(model_identity, pretrained=True)
+    example_inputs = torch.randn(1, 3, 32, 32)
+    #model = prune_wrapper(model, pruning_amount, pruning_mode, run_netron, path_for_save)
+    #if os.path.exists(f"{path_for_save}/best_checkpoint.tar"):
+    #    model_dict = torch.load(f"{path_for_save}/best_checkpoint.tar", map_location=torch.device('cpu'))
+    #    model.load_state_dict(model_dict["state_dict"])
+    #export_best_onnx(
+    #    model.to("cpu"),
+    #    example_inputs=example_inputs,
+    #    export_path=f"{path_for_save}/best_model_qonnx.onnx",
+    #)
+
+    for layer in model.conv_features:
+        if isinstance(layer, QuantConv2d):
+            print(layer)
+
+    exit()
     path = "untouched_models_folder/end2end_cnv_w1a1_export_to_download.onnx"
     model = ModelWrapper(path)
     x = model.graph.initializer
