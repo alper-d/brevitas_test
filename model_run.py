@@ -160,10 +160,10 @@ example_inputs = torch.randn(1, 3, 32, 32)
 
 # Export to QONNX format
 if os.path.exists(f"{path_for_save}/best_checkpoint.tar"):
-    model_dict = torch.load(f"{path_for_save}/best_checkpoint.tar")
+    model_dict = torch.load(f"{path_for_save}/best_checkpoint.tar", map_location=torch.device('cpu'))
     model.load_state_dict(model_dict["state_dict"])
 export_best_onnx(
-    model,
+    model.to("cpu"),
     example_inputs=example_inputs,
     export_path=f"{path_for_save}/best_model_qonnx.onnx",
 )
