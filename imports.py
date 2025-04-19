@@ -61,7 +61,7 @@ def prune_wrapper(model, pruning_amount, pruning_mode, run_netron, folder_name):
     )
     if run_netron:
         showInNetron(f"{onnx_path_extended}.onnx", port=8080)
-        showInNetron(f"{pruned_onnx_filename}.onnx", port=8081)
+        showInNetron(f"{pruned_onnx_filename}.onnx", port=8082)
     with open(f"{pruned_onnx_filename}.json", "w") as fp:
         fp.write(json.dumps(pruning_data, indent=4, ensure_ascii=False))
     config.JIT_ENABLED = 1
@@ -77,6 +77,9 @@ def conv_layer_traverse(model):
 def prune_all_conv_layers(model, SIMD_list, NumColPruned=-1, pruning_mode="structured"):
     pruning_data = []
     for layer_idx, layer in enumerate(conv_layer_traverse(model)):
+        if layer_idx == 0:
+            print("Initial layer skipped as channels are RGB channels.")
+            continue
         SIMD = SIMD_list[layer_idx]
         in_channels = layer.in_channels
         try:
@@ -114,19 +117,19 @@ def sort_tensor(tensor):
     return sorted_indices.squeeze()
 
 
-def prune_brevitas_modelSIMD(model, layer_to_prune, SIMD_in=1, NumColPruned=-1) -> dict:
-    SIMD_out = -1
+def prune_brevitas_modelSIMD(model, layer_to_prune, SIMD_in=1, NumColPruned=-1, SIMD_out=-1) -> dict:
     in_channels = layer_to_prune.in_channels
     assert in_channels % SIMD_in == 0, "SIMD must divide IFM Channels"
-    if isinstance(NumColPruned, float):
-        SIMD_out = int(round(SIMD_in * (1.0 - NumColPruned)))
-    if SIMD_out == 0:
-        SIMD_out = 1
+    num_of_blocks = int(in_channels / SIMD_in)
+    if SIMD_out == -1:
+        if isinstance(NumColPruned, float):
+            SIMD_out = int(round(SIMD_in * (1.0 - NumColPruned)))
+        if SIMD_out == 0:
+            SIMD_out = 1
+    in_channels_new = num_of_blocks * SIMD_out
     # channels_to_prune = math.floor(model.conv_features[conv_feature_index].in_channels * pruning_amount)
-    channels_to_prune = [
-        i if i % SIMD_in < SIMD_in - SIMD_out else -1 for i in range(in_channels)
-    ]
-    channels_to_prune = list(filter(lambda x: x > -1, channels_to_prune))
+    sorting_indices = sort_tensor(layer_to_prune.weight.data)
+    channels_to_prune = [int(i) for i in sorting_indices[:(-1)*in_channels_new]]
     dep_graph = tp.DependencyGraph().build_dependency(
         model, example_inputs=example_inputs
     )
