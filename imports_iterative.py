@@ -121,7 +121,7 @@ class IterativePruning:
         x = x.reshape(tensor.shape[1], -1)
         out = x.sum(dim=1, keepdim=True).abs()
         sorted_indices = out.argsort(dim=0)
-        return sorted_indices.squeeze()
+        return [i.item() for i in sorted_indices.squeeze()]
 
     def prune_brevitas_modelSIMD(
         self,
@@ -143,7 +143,7 @@ class IterativePruning:
         in_channels_new = num_of_blocks * SIMD_out
         # channels_to_prune = math.floor(model.conv_features[conv_feature_index].in_channels * pruning_amount)
         sorting_indices = self.sort_tensor(layer_to_prune.weight.data)
-        channels_to_prune = [int(i) for i in sorting_indices[: (-1) * in_channels_new]]
+        channels_to_prune = sorting_indices[: (-1) * in_channels_new]
         dep_graph = tp.DependencyGraph().build_dependency(
             model, example_inputs=example_inputs
         )
@@ -183,7 +183,7 @@ class IterativePruning:
         # channels_to_prune = math.floor(model.conv_features[conv_feature_index].in_channels * pruning_amount)
 
         sorting_indices = self.sort_tensor(layer_to_prune.weight.data)
-        channels_to_prune = [int(i) for i in sorting_indices[:prune_block_len]]
+        channels_to_prune = sorting_indices[:prune_block_len]
         # channels_to_prune = [i for i in range(prune_block_len)]
         dep_graph = tp.DependencyGraph().build_dependency(
             model, example_inputs=example_inputs
