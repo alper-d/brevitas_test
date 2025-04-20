@@ -6,6 +6,7 @@ from brevitas.nn import QuantConv2d
 # from brevitas.core.restrict_val import RestrictValueType
 import time
 import torch_pruning as tp
+import matplotlib.pyplot as plt
 
 # from torch_pruning import utils
 from brevitas.export import export_qonnx
@@ -74,6 +75,14 @@ def conv_layer_traverse(model):
             yield layer
 
 
+def weight_histograms(model, folder_name):
+    length = sum(1 for _ in conv_layer_traverse(model))
+    fig, axs = plt.subplots(length)
+    for layer_idx, layer in enumerate(conv_layer_traverse(model)):
+        axs[layer_idx].hist(get_layer_tensor(layer.weight.data))
+    plt.savefig(f"./{folder_name}/weight_hist.png")
+
+
 def prune_all_conv_layers(model, SIMD_list, NumColPruned=-1, pruning_mode="structured"):
     pruning_data = []
     for layer_idx, layer in enumerate(conv_layer_traverse(model)):
@@ -112,12 +121,21 @@ def prune_all_conv_layers(model, SIMD_list, NumColPruned=-1, pruning_mode="struc
 def sort_tensor(tensor):
     x = tensor.permute(1, 0, 2, 3)
     x = x.reshape(tensor.shape[1], -1)
-    out = x.sum(dim=1, keepdim=True).abs()
+    out = x.abs().sum(dim=1, keepdim=True)
     sorted_indices = out.argsort(dim=0)
     return sorted_indices.squeeze()
 
 
-def prune_brevitas_modelSIMD(model, layer_to_prune, SIMD_in=1, NumColPruned=-1, SIMD_out=-1) -> dict:
+def get_layer_tensor(tensor):
+    x = tensor.permute(1, 0, 2, 3)
+    x = x.reshape(tensor.shape[1], -1)
+    out = x.abs().sum(dim=1, keepdim=True)
+    return out
+
+
+def prune_brevitas_modelSIMD(
+    model, layer_to_prune, SIMD_in=1, NumColPruned=-1, SIMD_out=-1
+) -> dict:
     in_channels = layer_to_prune.in_channels
     assert in_channels % SIMD_in == 0, "SIMD must divide IFM Channels"
     num_of_blocks = int(in_channels / SIMD_in)
@@ -129,7 +147,7 @@ def prune_brevitas_modelSIMD(model, layer_to_prune, SIMD_in=1, NumColPruned=-1, 
     in_channels_new = num_of_blocks * SIMD_out
     # channels_to_prune = math.floor(model.conv_features[conv_feature_index].in_channels * pruning_amount)
     sorting_indices = sort_tensor(layer_to_prune.weight.data)
-    channels_to_prune = [int(i) for i in sorting_indices[:(-1)*in_channels_new]]
+    channels_to_prune = [int(i) for i in sorting_indices[: (-1) * in_channels_new]]
     dep_graph = tp.DependencyGraph().build_dependency(
         model, example_inputs=example_inputs
     )
