@@ -38,10 +38,13 @@ is_iterative = argparser.iterative
 now_time = datetime.datetime.now()
 now_str = now_time.strftime("%d_%b_%Y__%H_%M_%S")
 pruning_type = f"{pruning_mode}_{model_identity}"
-if not os.path.exists(f"runs/{pruning_type}"):
-    os.mkdir(f"runs/{pruning_type}")
-os.mkdir(f"runs/{pruning_type}/{now_str}")
-path_for_save = f"runs/{pruning_type}/{now_str}"
+sub_directory_to_save = os.path.join("runs", pruning_type) if not is_iterative else os.path.join("runs", "iterative", pruning_type)
+
+if not os.path.exists(sub_directory_to_save):
+    os.makedirs(sub_directory_to_save, exist_ok=True)
+
+os.mkdir(os.path.join(sub_directory_to_save, now_str))
+path_for_save = os.path.join(sub_directory_to_save, now_str)
 shutil.copy2("./configurations.py", path_for_save)
 shutil.copy2("./model_run.py", path_for_save)
 network = "cnv"
