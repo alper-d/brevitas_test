@@ -60,7 +60,7 @@ def prune_and_train(steps):
         iteration_path = os.path.join(path_for_save, f"step{step_no}")
         os.mkdir(iteration_path)
         file1 = start_log_to_file(iteration_path)
-        model = pruner.iterate(model, pruning_mode, run_netron, path_for_save)
+        model = pruner.iterate(model, pruning_mode, run_netron, iteration_path)
         criterion, optimizer = get_optimizer(model)
 
         eval_meters = EvalEpochMeters()
@@ -141,7 +141,7 @@ def prune_and_train(steps):
             log_to_file(file1, f"Epoch {epoch} complete. Test accuracy {str(top1avg)}")
             if top1avg >= best_val_acc:
                 best_val_acc = top1avg
-                best_path = os.path.join(f"{path_for_save}", "best_checkpoint.tar")
+                best_path = os.path.join(f"{iteration_path}", "best_checkpoint.tar")
                 save_best_checkpoint(model, optimizer, epoch, best_val_acc, best_path)
             else:
                 pass
@@ -150,15 +150,15 @@ def prune_and_train(steps):
         example_inputs = torch.randn(1, 3, 32, 32)
 
         # Export to QONNX format
-        if os.path.exists(f"{path_for_save}/best_checkpoint.tar"):
+        if os.path.exists(f"{iteration_path}/best_checkpoint.tar"):
             model_dict = torch.load(
-                f"{path_for_save}/best_checkpoint.tar", map_location=torch.device("cpu")
+                f"{iteration_path}/best_checkpoint.tar", map_location=torch.device("cpu")
             )
             model.load_state_dict(model_dict["state_dict"])
         export_best_onnx(
             model.to("cpu"),
             example_inputs=example_inputs,
-            export_path=f"{path_for_save}/best_model_qonnx.onnx",
+            export_path=f"{iteration_path}/best_model_qonnx.onnx",
         )
         file1.close()
-        make_archive(f"run_zip/{pruning_type}_{now_str}", "zip", path_for_save)
+        # make_archive(f"run_zip/{pruning_type}_{now_str}", "zip", path_for_save)

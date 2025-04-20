@@ -67,7 +67,8 @@ eta_min, T_max, T_mult = lr * (0.5**9), 50, 2
 weight_decay = 0
 random_seed = 1
 log_freq = 10
-epochs, num_classes, starting_epoch, best_val_acc = 1000, 10, 0, 0
+epochs = 1000 if not cmd_args["is_iterative"] else 500
+num_classes, starting_epoch, best_val_acc = 10, 0, 0
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

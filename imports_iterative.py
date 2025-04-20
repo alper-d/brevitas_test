@@ -51,7 +51,7 @@ class IterativePruning:
 
     @disable_jit
     def iterate(self, model, pruning_mode, run_netron, folder_name):
-        onnx_path_extended = f"{folder_name}/step{self.current_step}/extended_model"
+        onnx_path_extended = f"{folder_name}/extended_model"
         pruning_amount = self.steps[self.current_step]
         pruning_data = self.prune_all_conv_layers(
             model,
