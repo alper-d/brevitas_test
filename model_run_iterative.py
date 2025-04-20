@@ -26,8 +26,6 @@ from configurations import (
     device,
     log_freq,
     path_for_save,
-    pruning_type,
-    now_str,
     T_max,
     T_mult,
     SqrHingeLoss,
@@ -54,7 +52,7 @@ def prune_and_train(steps):
     model, _ = model_with_cfg(model_identity, pretrained=pretrained)
 
     pruner = IterativePruning(steps=steps)
-
+    epoch_list = [500, 500, 1000]
     for step_no, step in enumerate(steps):
         best_val_acc = 0
         iteration_path = os.path.join(path_for_save, f"step{step_no}")
@@ -72,6 +70,7 @@ def prune_and_train(steps):
             else None
         )
         model.to(device)
+        epochs = epoch_list[step_no]
         for epoch in range(starting_epoch, epochs):
             model.train()
             criterion.train()
