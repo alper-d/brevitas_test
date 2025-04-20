@@ -22,13 +22,10 @@ from qonnx.core.modelwrapper import ModelWrapper
 # import onnx.numpy_helper as numpy_helper
 # from onnx2torch import convert
 from configurations import (
-    run_netron,
-    pruning_mode,
+    cmd_args,
     pruning_amount,
-    model_identity,
     get_optimizer,
     eta_min,
-    use_scheduler,
     device,
     log_freq,
     path_for_save,
@@ -47,13 +44,22 @@ from configurations import (
 )
 from shutil import make_archive
 
+run_netron, pruning_mode, use_scheduler, model_identity, is_iterative, pretrained = (
+    cmd_args["run_netron"],
+    cmd_args["pruning_mode"],
+    cmd_args["use_scheduler"],
+    cmd_args["model_identity"],
+    cmd_args["is_iterative"],
+    cmd_args["pretrained"],
+)
+
 # model_blueprint = load_model("runs/SIMD_0.9_30_Mar_2025__19_10_52/extended_model_0_9_SIMD.onnx")
 build_dir = "models_folder"
 export_onnx_path = build_dir + "/end2end_cnv_w1a1_export_to_download.onnx"
 export_onnx_path2 = build_dir + "/checkpoint.tar"
 model_temp = ModelWrapper(export_onnx_path)
 # model_temp2 = get_test_model_trained("CNV", 1, 1)
-model, _ = model_with_cfg(model_identity, pretrained=True)
+model, _ = model_with_cfg(model_identity, pretrained=pretrained)
 
 
 # if os.path.exists(f"runs/{pruning_log_identity}/best_checkpoint.tar"):

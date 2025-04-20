@@ -20,6 +20,7 @@ def get_argparser():
     argparser.add_argument("--use_scheduler", type=bool, default=True, help="")
     argparser.add_argument("--model", type=str, default="cnv_1w1a", help="")
     argparser.add_argument("--iterative", action="store_true", help="")
+    argparser.add_argument("--pretrained", type=bool, default=True, help="")
     argparser.add_argument(
         "--pruning_mode", type=str, default="structured", choices=["structured", "SIMD"]
     )
@@ -29,16 +30,23 @@ def get_argparser():
 argparser = get_argparser()
 # pruning_amount = argparser.pruning_amount
 pruning_amount = [0.7] * 1 + [0.7] * 3 + [0.7] * 4 + [0.7] * 1
-run_netron = argparser.run_netron
-pruning_mode = argparser.pruning_mode
-use_scheduler = argparser.use_scheduler
-model_identity = argparser.model
-is_iterative = argparser.iterative
-
+cmd_args = {
+    "run_netron": argparser.run_netron,
+    "pruning_mode": argparser.pruning_mode,
+    "use_scheduler": argparser.use_scheduler,
+    "model_identity": argparser.model,
+    "is_iterative": argparser.iterative,
+    "pretrained": argparser.pretrained,
+}
+pretrained = argparser.pretrained
 now_time = datetime.datetime.now()
 now_str = now_time.strftime("%d_%b_%Y__%H_%M_%S")
-pruning_type = f"{pruning_mode}_{model_identity}"
-sub_directory_to_save = os.path.join("runs", pruning_type) if not is_iterative else os.path.join("runs", "iterative", pruning_type)
+pruning_type = f"{cmd_args['pruning_mode']}_{cmd_args['model_identity']}"
+sub_directory_to_save = (
+    os.path.join("runs", pruning_type)
+    if not cmd_args["is_iterative"]
+    else os.path.join("runs", "iterative", pruning_type)
+)
 
 if not os.path.exists(sub_directory_to_save):
     os.makedirs(sub_directory_to_save, exist_ok=True)

@@ -14,9 +14,8 @@ from visualize_netron import showInNetron
 from configurations import (
     now_time,
     pruning_amount,
-    pruning_mode,
+    cmd_args,
     SqrHingeLoss,
-    model_identity,
     weight_decay,
     lr,
     lr_schedule_period,
@@ -25,6 +24,14 @@ from configurations import (
 
 example_inputs = torch.randn(1, 3, 32, 32)
 SIMD_LIST = [3, 32, 32, 32, 32, 32, 32, 32, 64]
+run_netron, pruning_mode, use_scheduler, model_identity, is_iterative, pretrained = (
+    cmd_args["run_netron"],
+    cmd_args["pruning_mode"],
+    cmd_args["use_scheduler"],
+    cmd_args["model_identity"],
+    cmd_args["is_iterative"],
+    cmd_args["pretrained"],
+)
 
 
 def disable_jit(func):

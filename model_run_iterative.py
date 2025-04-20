@@ -20,12 +20,9 @@ from models_folder.models import model_with_cfg
 # import onnx.numpy_helper as numpy_helper
 # from onnx2torch import convert
 from configurations import (
-    run_netron,
-    pruning_mode,
-    model_identity,
+    cmd_args,
     get_optimizer,
     eta_min,
-    use_scheduler,
     device,
     log_freq,
     path_for_save,
@@ -43,9 +40,18 @@ from configurations import (
 )
 from shutil import make_archive
 
+run_netron, pruning_mode, use_scheduler, model_identity, is_iterative, pretrained = (
+    cmd_args["run_netron"],
+    cmd_args["pruning_mode"],
+    cmd_args["use_scheduler"],
+    cmd_args["model_identity"],
+    cmd_args["is_iterative"],
+    cmd_args["pretrained"],
+)
+
 
 def prune_and_train(steps):
-    model, _ = model_with_cfg(model_identity, pretrained=True)
+    model, _ = model_with_cfg(model_identity, pretrained=pretrained)
 
     pruner = IterativePruning(steps=steps)
 
