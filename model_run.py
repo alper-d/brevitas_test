@@ -14,6 +14,7 @@ from imports import (
     prune_wrapper,
     EvalEpochMeters,
     eval_model,
+    weight_histograms,
 )
 from models_folder.models import model_with_cfg
 from qonnx.core.modelwrapper import ModelWrapper
@@ -69,6 +70,7 @@ file1 = start_log_to_file(path_for_save)
 # model_state_dict = package["state_dict"]
 # model.load_state_dict(model_state_dict)
 model = prune_wrapper(model, pruning_amount, pruning_mode, run_netron, path_for_save)
+weight_histograms(model, path_for_save)
 criterion, optimizer = get_optimizer(model)
 # model = CNV(10, WEIGHT_BIT_WIDTH, ACT_BIT_WIDTH, 8, 3).to(device=device)
 
@@ -132,7 +134,7 @@ for epoch in range(starting_epoch, epochs):
         eval_meters.top1.update(prec1.item(), input.size(0))
     log_str = "LR no update"
     if scheduler and epoch <= 348:
-        #scheduler.step(epoch + 1)
+        # scheduler.step(epoch + 1)
         scheduler.step()
         log_str = f"Scheduler step. Next epoch(s) run with lr={scheduler.get_last_lr()}"
     elif (epoch + 1) % lr_schedule_period == 0:
@@ -160,7 +162,9 @@ example_inputs = torch.randn(1, 3, 32, 32)
 
 # Export to QONNX format
 if os.path.exists(f"{path_for_save}/best_checkpoint.tar"):
-    model_dict = torch.load(f"{path_for_save}/best_checkpoint.tar", map_location=torch.device('cpu'))
+    model_dict = torch.load(
+        f"{path_for_save}/best_checkpoint.tar", map_location=torch.device("cpu")
+    )
     model.load_state_dict(model_dict["state_dict"])
 export_best_onnx(
     model.to("cpu"),

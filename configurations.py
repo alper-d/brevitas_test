@@ -19,6 +19,7 @@ def get_argparser():
     argparser.add_argument("--run_netron", type=bool, default=False, help="")
     argparser.add_argument("--use_scheduler", type=bool, default=True, help="")
     argparser.add_argument("--model", type=str, default="cnv_1w1a", help="")
+    argparser.add_argument("--iterative", action="store_true", help="")
     argparser.add_argument(
         "--pruning_mode", type=str, default="structured", choices=["structured", "SIMD"]
     )
@@ -27,11 +28,12 @@ def get_argparser():
 
 argparser = get_argparser()
 # pruning_amount = argparser.pruning_amount
-pruning_amount = [0.5] * 4 + [0.5] * 4 + [0.5] * 1
+pruning_amount = [0.7] * 1 + [0.7] * 3 + [0.7] * 4 + [0.7] * 1
 run_netron = argparser.run_netron
 pruning_mode = argparser.pruning_mode
 use_scheduler = argparser.use_scheduler
 model_identity = argparser.model
+is_iterative = argparser.iterative
 
 now_time = datetime.datetime.now()
 now_str = now_time.strftime("%d_%b_%Y__%H_%M_%S")
@@ -50,9 +52,7 @@ num_workers = 6
 lr = 0.01
 lr_schedule_period = 30
 lr_schedule_ratio = 0.5
-eta_min = lr * (0.5**9)
-T_max = 50
-T_mult = 2
+eta_min, T_max, T_mult = lr * (0.5**9), 50, 2
 weight_decay = 0
 random_seed = 1
 log_freq = 10
@@ -99,10 +99,10 @@ def get_optimizer(model):
 
 
 def get_scheduler(optimizer, T_max, eta_min, T_mult=1):
-    #return CosineAnnealingLR(optimizer=optimizer, T_max=T_max, eta_min=eta_min)
+    # return CosineAnnealingLR(optimizer=optimizer, T_max=T_max, eta_min=eta_min)
     return CosineAnnealingWarmRestarts(
-       optimizer=optimizer, T_0=T_max, T_mult=T_mult, eta_min=eta_min
+        optimizer=optimizer, T_0=T_max, T_mult=T_mult, eta_min=eta_min
     )
-    #return MultiStepLR(
+    # return MultiStepLR(
     #    optimizer=optimizer, milestones=[30, 80, 140, 200, 260], gamma=0.5
-    #)
+    # )

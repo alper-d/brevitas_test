@@ -2,6 +2,7 @@ import torch
 import json
 import brevitas.config as config
 from brevitas.nn import QuantConv2d
+import math
 
 # from brevitas.core.restrict_val import RestrictValueType
 import time
@@ -36,182 +37,168 @@ def disable_jit(func):
     return wrapper
 
 
-@disable_jit
-def prune_wrapper(model, pruning_amount, pruning_mode, run_netron, folder_name):
-    onnx_path_extended = f"{folder_name}/extended_model"
+class IterativePruning:
+    def __init__(self, steps):
+        self.steps = steps
+        self.current_step = 0
 
-    export_qonnx(
-        model,
-        args=example_inputs.cpu(),
-        export_path=f"{onnx_path_extended}.onnx",
-        opset_version=13,
-    )
-    pruning_data = prune_all_conv_layers(
-        model,
-        SIMD_list=SIMD_LIST,
-        NumColPruned=pruning_amount,
-        pruning_mode=pruning_mode,
-    )
-    pruned_onnx_filename = f"{onnx_path_extended}_pruned"
-    export_qonnx(
-        model,
-        args=example_inputs.cpu(),
-        export_path=f"{pruned_onnx_filename}.onnx",
-        opset_version=13,
-    )
-    if run_netron:
-        showInNetron(f"{onnx_path_extended}.onnx", port=8080)
-        showInNetron(f"{pruned_onnx_filename}.onnx", port=8081)
-    with open(f"{pruned_onnx_filename}.json", "w") as fp:
-        fp.write(json.dumps(pruning_data, indent=4, ensure_ascii=False))
-    config.JIT_ENABLED = 1
-    return model
-
-
-def conv_layer_traverse(model):
-    for layer in model.conv_features:
-        if isinstance(layer, QuantConv2d):
-            yield layer
-
-
-def prune_all_conv_layers(model, SIMD_list, NumColPruned=-1, pruning_mode="structured"):
-    pruning_data = []
-    for layer_idx, layer in enumerate(conv_layer_traverse(model)):
-        SIMD = SIMD_list[layer_idx]
-        in_channels = layer.in_channels
-        try:
-            assert (
-                in_channels % SIMD == 0
-            ), f"SIMD must divide IFM Channels. Pruning {layer} is skipped."
-        except AssertionError:
-            continue
-        pruning_ratio = (
-            NumColPruned[layer_idx] if isinstance(NumColPruned, list) else NumColPruned
+    @disable_jit
+    def iterate(self, model, pruning_mode, run_netron, folder_name):
+        onnx_path_extended = f"{folder_name}/step{self.current_step}/extended_model"
+        pruning_amount = self.steps[self.current_step]
+        pruning_data = self.prune_all_conv_layers(
+            model,
+            SIMD_list=SIMD_LIST,
+            NumColPruned=pruning_amount,
+            pruning_mode=pruning_mode,
+            last_step=(self.current_step == len(self.steps) - 1),
         )
-        if pruning_mode == "structured":
-            pruning_entities = prune_brevitas_model(
-                model, layer_to_prune=layer, SIMD=SIMD, NumColPruned=pruning_ratio
+        pruned_onnx_filename = f"{onnx_path_extended}_pruned"
+        export_qonnx(
+            model,
+            args=example_inputs.cpu(),
+            export_path=f"{pruned_onnx_filename}.onnx",
+            opset_version=13,
+        )
+        with open(
+            f"{pruned_onnx_filename}_iteration{self.current_step}.json", "w"
+        ) as fp:
+            fp.write(json.dumps(pruning_data, indent=4, ensure_ascii=False))
+        self.current_step += 1
+        return model
+
+    def conv_layer_traverse(self, model):
+        for layer in model.conv_features:
+            if isinstance(layer, QuantConv2d):
+                yield layer
+
+    def prune_all_conv_layers(
+        self,
+        model,
+        SIMD_list,
+        NumColPruned=-1,
+        pruning_mode="structured",
+        last_step=False,
+    ):
+        pruning_data = []
+        for layer_idx, layer in enumerate(self.conv_layer_traverse(model)):
+            if layer_idx == 0:
+                print("Initial layer skipped as channels are RGB channels.")
+                continue
+            SIMD = SIMD_list[layer_idx]
+            pruning_ratio = (
+                NumColPruned[layer_idx]
+                if isinstance(NumColPruned, list)
+                else NumColPruned
+            )
+            if pruning_mode == "structured":
+                pruning_entities = self.prune_brevitas_model(
+                    model,
+                    layer_to_prune=layer,
+                    SIMD=SIMD,
+                    prune_ratio=pruning_ratio,
+                    last_step=last_step,
+                )
+            else:
+                pruning_entities = self.prune_brevitas_modelSIMD(
+                    model,
+                    layer_to_prune=layer,
+                    SIMD_in=SIMD,
+                    NumColPruned=pruning_ratio,
+                    last_step=last_step,
+                )
+            pruning_data.append(
+                {
+                    "pruned_layer_index": layer_idx,
+                    "pruning_mode": pruning_mode,
+                    "pruning_entities": pruning_entities,
+                }
+            )
+        return pruning_data
+
+    def sort_tensor(self, tensor):
+        x = tensor.permute(1, 0, 2, 3)
+        x = x.reshape(tensor.shape[1], -1)
+        out = x.sum(dim=1, keepdim=True).abs()
+        sorted_indices = out.argsort(dim=0)
+        return sorted_indices.squeeze()
+
+    def prune_brevitas_modelSIMD(
+        self,
+        model,
+        layer_to_prune,
+        SIMD_in=1,
+        NumColPruned=-1,
+        SIMD_out=-1,
+        last_step=False,
+    ) -> dict:
+        in_channels = layer_to_prune.in_channels
+
+        num_of_blocks = int(in_channels / SIMD_in)
+        if SIMD_out == -1:
+            if isinstance(NumColPruned, float):
+                SIMD_out = int(round(SIMD_in * (1.0 - NumColPruned)))
+            if SIMD_out == 0:
+                SIMD_out = 1
+        in_channels_new = num_of_blocks * SIMD_out
+        # channels_to_prune = math.floor(model.conv_features[conv_feature_index].in_channels * pruning_amount)
+        sorting_indices = self.sort_tensor(layer_to_prune.weight.data)
+        channels_to_prune = [int(i) for i in sorting_indices[: (-1) * in_channels_new]]
+        dep_graph = tp.DependencyGraph().build_dependency(
+            model, example_inputs=example_inputs
+        )
+        group = dep_graph.get_pruning_group(
+            layer_to_prune,
+            tp.prune_conv_in_channels,
+            idxs=channels_to_prune,
+        )
+        if dep_graph:
+            group.prune()
+        print(layer_to_prune.in_channels)
+        return {
+            "in_channels_old": in_channels,
+            "in_channels_new": layer_to_prune.in_channels,
+            "SIMD_in": SIMD_in,
+            "SIMD_out": SIMD_out,
+        }
+
+    def prune_brevitas_model(
+        self, model, layer_to_prune, SIMD=1, prune_ratio=-1, last_step=False
+    ) -> dict:
+        in_channels = layer_to_prune.in_channels
+        print(f"in_channels={in_channels} SIMD={SIMD}")
+        if last_step:
+            # round to SIMD
+            NumColPruned = int(math.ceil((in_channels / SIMD) * prune_ratio))
+            prune_block_len = (
+                in_channels - (SIMD * NumColPruned)
+                if SIMD * NumColPruned < in_channels
+                else in_channels - SIMD
             )
         else:
-            pruning_entities = prune_brevitas_modelSIMD(
-                model, layer_to_prune=layer, SIMD_in=SIMD, NumColPruned=pruning_ratio
+            NumColPruned = int(round(in_channels * prune_ratio))
+            prune_block_len = (
+                NumColPruned if NumColPruned < in_channels else in_channels - 1
             )
-        pruning_data.append(
-            {
-                "pruned_layer_index": layer_idx,
-                "pruning_mode": pruning_mode,
-                "pruning_entities": pruning_entities,
-            }
+        # channels_to_prune = math.floor(model.conv_features[conv_feature_index].in_channels * pruning_amount)
+
+        sorting_indices = self.sort_tensor(layer_to_prune.weight.data)
+        channels_to_prune = [int(i) for i in sorting_indices[:prune_block_len]]
+        # channels_to_prune = [i for i in range(prune_block_len)]
+        dep_graph = tp.DependencyGraph().build_dependency(
+            model, example_inputs=example_inputs
         )
-    return pruning_data
-
-
-def sort_tensor(tensor):
-    x = tensor.permute(1, 0, 2, 3)
-    x = x.reshape(tensor.shape[1], -1)
-    out = x.sum(dim=1, keepdim=True).abs()
-    sorted_indices = out.argsort(dim=0)
-    return sorted_indices.squeeze()
-
-
-def prune_brevitas_modelSIMD(model, layer_to_prune, SIMD_in=1, NumColPruned=-1) -> dict:
-    SIMD_out = -1
-    in_channels = layer_to_prune.in_channels
-    assert in_channels % SIMD_in == 0, "SIMD must divide IFM Channels"
-    if isinstance(NumColPruned, float):
-        SIMD_out = int(round(SIMD_in * (1.0 - NumColPruned)))
-    if SIMD_out == 0:
-        SIMD_out = 1
-    # channels_to_prune = math.floor(model.conv_features[conv_feature_index].in_channels * pruning_amount)
-    channels_to_prune = [
-        i if i % SIMD_in < SIMD_in - SIMD_out else -1 for i in range(in_channels)
-    ]
-    channels_to_prune = list(filter(lambda x: x > -1, channels_to_prune))
-    dep_graph = tp.DependencyGraph().build_dependency(
-        model, example_inputs=example_inputs
-    )
-    group = dep_graph.get_pruning_group(
-        layer_to_prune,
-        tp.prune_conv_in_channels,
-        idxs=channels_to_prune,
-    )
-    if dep_graph:
-        group.prune()
-    print(layer_to_prune.in_channels)
-    return {
-        "in_channels_old": in_channels,
-        "in_channels_new": layer_to_prune.in_channels,
-        "SIMD_in": SIMD_in,
-        "SIMD_out": SIMD_out,
-    }
-
-
-def prune_brevitas_model(model, layer_to_prune, SIMD=1, NumColPruned=-1) -> dict:
-    in_channels = layer_to_prune.in_channels
-    print(f"in_channels={in_channels} SIMD={SIMD}")
-    prune_block_len = get_pruning_len(in_channels, NumColPruned)
-    sorting_indices = sort_tensor(layer_to_prune.weight.data)
-    channels_to_prune = [int(i) for i in sorting_indices[:prune_block_len]]
-    # channels_to_prune = [i for i in range(prune_block_len)]
-    dep_graph = tp.DependencyGraph().build_dependency(
-        model, example_inputs=example_inputs
-    )
-    group = dep_graph.get_pruning_group(
-        layer_to_prune,
-        tp.prune_conv_in_channels,
-        idxs=channels_to_prune,
-    )
-    # group2 = dep_graph.get_pruning_group(model.conv_features[15], tp.prune_conv_in_channels, idxs=[0])
-    # print(group.details())
-    if dep_graph:
-        group.prune()
-    # utils.draw_groups(dep_graph, 'groups')
-    # utils.draw_dependency_graph(dep_graph, 'dep_graph')
-    # utils.draw_computational_graph(dep_graph,'comp_graph')
-    return {
-        "in_channels_old": in_channels,
-        "in_channels_new": layer_to_prune.in_channels,
-    }
-
-    importance = tp.importance.GroupNormImportance(p=2, group_reduction="first")
-    pruner = tp.pruner.GroupNormPruner(
-        model,
-        example_inputs=example_inputs,
-        importance=importance,
-        iterative_steps=1,
-        pruning_ratio=0.0,
-        global_pruning=False,
-        round_to=8,
-        pruning_ratio_dict={model.conv_features[1]: 0.1},
-        root_module_types=[QuantConv2d],
-        unwrapped_parameters=[[model.conv_features[1].weight, 0]],
-        # customized_pruners={QuantConv2d: tp.pruner.prune_conv_in_channels}
-    )
-
-    for g in pruner.step(interactive=True):
-        g.prune()
-    if isinstance(
-        pruner,
-        (
-            tp.pruner.BNScalePruner,
-            tp.pruner.GroupNormPruner,
-            tp.pruner.GrowingRegPruner,
-        ),
-    ):
-        pruner.update_regularizer()  # if the model has been pruned, we need to update the regularizer
-        pruner.regularize(model)
-
-
-def get_pruning_len(in_channels, ratio):
-    """
-    No SIMD
-    """
-    if in_channels * ratio < 0:
-        return 0
-    elif in_channels * ratio > in_channels:
-        return in_channels
-    else:
-        return int(in_channels * ratio)
+        group = dep_graph.get_pruning_group(
+            layer_to_prune,
+            tp.prune_conv_in_channels,
+            idxs=channels_to_prune,
+        )
+        if dep_graph:
+            group.prune()
+        return {
+            "in_channels_old": in_channels,
+            "in_channels_new": layer_to_prune.in_channels,
+        }
 
 
 def save_best_checkpoint(best_model, optimizer, epoch, best_val_acc, best_path):
