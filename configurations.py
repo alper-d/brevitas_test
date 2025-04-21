@@ -43,7 +43,7 @@ now_time = datetime.datetime.now()
 now_str = now_time.strftime("%d_%b_%Y__%H_%M_%S")
 pruning_type = f"{cmd_args['pruning_mode']}_{cmd_args['model_identity']}"
 sub_directory_to_save = (
-    os.path.join("runs", pruning_type)
+    os.path.join("runs", "one_shot", pruning_type)
     if not cmd_args["is_iterative"]
     else os.path.join("runs", "iterative", pruning_type)
 )
