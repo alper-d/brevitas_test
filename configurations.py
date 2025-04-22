@@ -43,7 +43,7 @@ now_time = datetime.datetime.now()
 now_str = now_time.strftime("%d_%b_%Y__%H_%M_%S")
 pruning_type = f"{cmd_args['pruning_mode']}_{cmd_args['model_identity']}"
 sub_directory_to_save = (
-    os.path.join("runs", "one_shot", pruning_type)
+    os.path.join("runs", pruning_type)
     if not cmd_args["is_iterative"]
     else os.path.join("runs", "iterative", pruning_type)
 )
@@ -53,6 +53,7 @@ if not os.path.exists(sub_directory_to_save):
 
 os.mkdir(os.path.join(sub_directory_to_save, now_str))
 path_for_save = os.path.join(sub_directory_to_save, now_str)
+print(f"now_str = {now_str}")
 shutil.copy2("./configurations.py", path_for_save)
 shutil.copy2("./model_run.py", path_for_save)
 network = "cnv"

@@ -2,7 +2,7 @@ import torch
 import json
 import brevitas.config as config
 from brevitas.nn import QuantConv2d
-
+import numpy as np
 # from brevitas.core.restrict_val import RestrictValueType
 import time
 import torch_pruning as tp
@@ -84,9 +84,19 @@ def conv_layer_traverse(model):
 
 def weight_histograms(model, folder_name):
     length = sum(1 for _ in conv_layer_traverse(model))
-    fig, axs = plt.subplots(length)
+    figure_size = (24, 15)
+    fig, axs = plt.subplots(length, figsize=figure_size, constrained_layout=True)
     for layer_idx, layer in enumerate(conv_layer_traverse(model)):
-        axs[layer_idx].hist(get_layer_tensor(layer.weight.data))
+        tensor = get_layer_tensor(layer.weight.data)
+        p50 = np.percentile(tensor, 50)
+        p70 = np.percentile(tensor, 70)
+        p85 = np.percentile(tensor, 85)
+        axs[layer_idx].hist(tensor, bins=20, edgecolor='black', alpha=0.7)
+        axs[layer_idx].axvline(p50, color='red', linestyle='dashed', linewidth=3, label='50th Percentile (Median)')
+        axs[layer_idx].axvline(p70, color='green', linestyle='dashed', linewidth=3, label='70th Percentile')
+        axs[layer_idx].axvline(p85, color='blue', linestyle='dashed', linewidth=3, label='85th Percentile')
+        if layer_idx == 0:
+            plt.figlegend()
     plt.savefig(f"./{folder_name}/weight_hist.png")
 
 
@@ -137,7 +147,7 @@ def get_layer_tensor(tensor):
     x = tensor.permute(1, 0, 2, 3)
     x = x.reshape(tensor.shape[1], -1)
     out = x.abs().sum(dim=1, keepdim=True)
-    return [i.item() for i in out]
+    return out.squeeze()
 
 
 def prune_brevitas_modelSIMD(
@@ -149,8 +159,12 @@ def prune_brevitas_modelSIMD(
     if SIMD_out == -1:
         if isinstance(NumColPruned, float):
             SIMD_out = int(round(SIMD_in * (1.0 - NumColPruned)))
+        else:
+            SIMD_out = (in_channels - NumColPruned) / (in_channels / SIMD_in)
         if SIMD_out == 0:
             SIMD_out = 1
+    assert SIMD_out.is_integer(), "Output SIMD should be integer"
+    SIMD_out = int(SIMD_out)
     in_channels_new = num_of_blocks * SIMD_out
     # channels_to_prune = math.floor(model.conv_features[conv_feature_index].in_channels * pruning_amount)
     sorting_indices = sort_tensor(layer_to_prune.weight.data)
@@ -177,12 +191,13 @@ def prune_brevitas_modelSIMD(
 def prune_brevitas_model(model, layer_to_prune, SIMD=1, NumColPruned=-1) -> dict:
     in_channels = layer_to_prune.in_channels
     print(f"in_channels={in_channels} SIMD={SIMD}")
+    prune_block_len = NumColPruned
     if isinstance(NumColPruned, float):
         NumColPruned = int(round((in_channels / SIMD) * NumColPruned))
     # channels_to_prune = math.floor(model.conv_features[conv_feature_index].in_channels * pruning_amount)
-    prune_block_len = (
-        SIMD * NumColPruned if SIMD * NumColPruned < in_channels else in_channels - SIMD
-    )
+        prune_block_len = (
+            SIMD * NumColPruned if SIMD * NumColPruned < in_channels else in_channels - SIMD
+        )
     sorting_indices = sort_tensor(layer_to_prune.weight.data)
     channels_to_prune = sorting_indices[:prune_block_len]
     # channels_to_prune = [i for i in range(prune_block_len)]

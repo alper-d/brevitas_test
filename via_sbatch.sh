@@ -2,10 +2,10 @@
 #SBATCH --gres gpu:1
 #SBATCH --mem 5G
 #SBATCH --cpus-per-task 4
-#SBATCH --time 5:30:00
+#SBATCH --time 10:30:00
 #SBATCH --job-name pruning_thesis
 #SBATCH --partition rivulet
-#SBATCH --output run_out
+#SBATCH --output runs_slurm_log/run_out_<job-name>_<JobID>
 source ~/.bashrc
 
 echo "Running"
