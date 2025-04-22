@@ -1,3 +1,5 @@
+import argparse
+from models_folder.models import model_with_cfg
 import json
 from imports import conv_layer_traverse, prune_brevitas_model, prune_brevitas_modelSIMD
 import brevitas
@@ -9,7 +11,6 @@ def get_pruned_blueprint(model, json_path):
     for layer_idx, layer in enumerate(conv_layer_traverse(model)):
         if layer_idx == 0:
             continue
-        print(layer_idx)
         for layer_dict in data:
             if layer_idx == layer_dict["pruned_layer_index"]:
                 pruning_mode = layer_dict["pruning_mode"]
@@ -35,10 +36,17 @@ def get_pruned_blueprint(model, json_path):
     return model
 
 
-if __name__ == "__main__":
-    from models_folder.models import model_with_cfg
+def get_argparser():
+    argparser = argparse.ArgumentParser(description="parameters")
+    argparser.add_argument("--path", type=str, default="", help="")
+    argparser.add_argument("--model", type=str, default="cnv_1w1a", help="")
 
-    model, _ = model_with_cfg("cnv_1w1a", pretrained=True)
-    get_pruned_blueprint(
-        model, "runs/SIMD_cnv_1w1a/21_Apr_2025__14_34_44/extended_model_pruned.json"
-    )
+    return argparser.parse_args()
+
+
+if __name__ == "__main__":
+    parsed_args = get_argparser()
+    json_path = parsed_args.path
+    model_id = parsed_args.model
+    model, _ = model_with_cfg(model_id, pretrained=True)
+    model = get_pruned_blueprint(model, json_path)
