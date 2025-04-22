@@ -219,6 +219,7 @@ def prune_brevitas_model(model, layer_to_prune, SIMD=1, NumColPruned=-1) -> dict
     return {
         "in_channels_old": in_channels,
         "in_channels_new": layer_to_prune.in_channels,
+        "SIMD_in": SIMD,
     }
 
     importance = tp.importance.GroupNormImportance(p=2, group_reduction="first")
