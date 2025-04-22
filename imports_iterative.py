@@ -176,7 +176,9 @@ class IterativePruning:
         print(f"in_channels={in_channels} SIMD={SIMD}")
         if last_step:
             # round to SIMD
-            NumColPruned = in_channels - (round((in_channels * (1 - prune_ratio)) / SIMD) * SIMD)
+            NumColPruned = in_channels - (
+                round((in_channels * (1 - prune_ratio)) / SIMD) * SIMD
+            )
             prune_block_len = max(0, NumColPruned)
         else:
             NumColPruned = int(round(in_channels * prune_ratio))

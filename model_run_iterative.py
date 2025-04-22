@@ -151,7 +151,8 @@ def prune_and_train(steps):
         # Export to QONNX format
         if os.path.exists(f"{iteration_path}/best_checkpoint.tar"):
             model_dict = torch.load(
-                f"{iteration_path}/best_checkpoint.tar", map_location=torch.device("cpu")
+                f"{iteration_path}/best_checkpoint.tar",
+                map_location=torch.device("cpu"),
             )
             model.load_state_dict(model_dict["state_dict"])
         export_best_onnx(
