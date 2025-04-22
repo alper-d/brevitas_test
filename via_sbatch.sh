@@ -5,7 +5,7 @@
 #SBATCH --time 10:30:00
 #SBATCH --job-name pruning_thesis
 #SBATCH --partition rivulet
-#SBATCH --output runs_slurm_log/run_out_<job-name>_<JobID>
+#SBATCH --output runs_slurm_log/run_out_%x_%A
 source ~/.bashrc
 
 echo "Running"
