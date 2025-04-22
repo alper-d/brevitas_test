@@ -9,4 +9,4 @@
 source ~/.bashrc
 
 echo "Running"
-python model_run.py --model cnv_1w1a
+python wrapper.py --model cnv_1w1a --iterative

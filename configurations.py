@@ -1,5 +1,6 @@
 import argparse
 import torch
+import logging
 import torch.optim as optim
 import torch.nn as nn
 from torch.autograd import Function
@@ -53,7 +54,8 @@ if not os.path.exists(sub_directory_to_save):
 
 os.mkdir(os.path.join(sub_directory_to_save, now_str))
 path_for_save = os.path.join(sub_directory_to_save, now_str)
-print(f"now_str = {now_str}")
+logger = logging.getLogger("thesis")
+logger.warning(f"Logs will be saved into====> {path_for_save}")
 shutil.copy2("./configurations.py", path_for_save)
 shutil.copy2("./model_run.py", path_for_save)
 network = "cnv"
