@@ -7,6 +7,8 @@ import math
 # from brevitas.core.restrict_val import RestrictValueType
 import time
 import torch_pruning as tp
+import matplotlib.pyplot as plt
+import numpy as np
 
 # from torch_pruning import utils
 from brevitas.export import export_qonnx
@@ -74,7 +76,8 @@ class IterativePruning:
         self.current_step += 1
         return model
 
-    def conv_layer_traverse(self, model):
+    @staticmethod
+    def conv_layer_traverse(model):
         for layer in model.conv_features:
             if isinstance(layer, QuantConv2d):
                 yield layer
@@ -122,6 +125,13 @@ class IterativePruning:
                 }
             )
         return pruning_data
+
+    @staticmethod
+    def get_layer_tensor(tensor):
+        x = tensor.permute(1, 0, 2, 3)
+        x = x.reshape(tensor.shape[1], -1)
+        out = x.abs().mean(dim=1, keepdim=True)
+        return out.squeeze()
 
     def sort_tensor(self, tensor):
         x = tensor.permute(1, 0, 2, 3)
@@ -203,6 +213,7 @@ class IterativePruning:
         return {
             "in_channels_old": in_channels,
             "in_channels_new": layer_to_prune.in_channels,
+            "SIMD_in": SIMD,
         }
 
 
@@ -225,6 +236,34 @@ def export_best_onnx(best_model, example_inputs, export_path):
         example_inputs,
         export_path=export_path,
     )
+
+
+def weight_histograms(model, folder_name):
+    length = sum(1 for _ in IterativePruning.conv_layer_traverse(model))
+    figure_size = (24, 15)
+    fig, axs = plt.subplots(length, figsize=figure_size, constrained_layout=True)
+    for layer_idx, layer in enumerate(IterativePruning.conv_layer_traverse(model)):
+        tensor = IterativePruning.get_layer_tensor(layer.weight.data)
+        p50 = np.percentile(tensor, 50)
+        p70 = np.percentile(tensor, 70)
+        p85 = np.percentile(tensor, 85)
+        axs[layer_idx].hist(tensor, bins=20, edgecolor="black", alpha=0.7)
+        axs[layer_idx].axvline(
+            p50,
+            color="red",
+            linestyle="dashed",
+            linewidth=3,
+            label="50th Percentile (Median)",
+        )
+        axs[layer_idx].axvline(
+            p70, color="green", linestyle="dashed", linewidth=3, label="70th Percentile"
+        )
+        axs[layer_idx].axvline(
+            p85, color="blue", linestyle="dashed", linewidth=3, label="85th Percentile"
+        )
+        if layer_idx == 0:
+            plt.figlegend()
+    plt.savefig(f"./{folder_name}/weight_hist.png")
 
 
 class TrainingEpochMeters(object):

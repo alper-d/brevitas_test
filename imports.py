@@ -157,7 +157,7 @@ def sort_tensor(tensor):
 def get_layer_tensor(tensor):
     x = tensor.permute(1, 0, 2, 3)
     x = x.reshape(tensor.shape[1], -1)
-    out = x.abs().sum(dim=1, keepdim=True)
+    out = x.abs().mean(dim=1, keepdim=True)
     return out.squeeze()
 
 
@@ -169,12 +169,13 @@ def prune_brevitas_modelSIMD(
     num_of_blocks = int(in_channels / SIMD_in)
     if SIMD_out == -1:
         if isinstance(NumColPruned, float):
-            SIMD_out = int(round(SIMD_in * (1.0 - NumColPruned)))
+            SIMD_out = round(SIMD_in * (1.0 - NumColPruned))
         else:
             SIMD_out = (in_channels - NumColPruned) / (in_channels / SIMD_in)
         if SIMD_out == 0:
             SIMD_out = 1
-    assert SIMD_out.is_integer(), "Output SIMD should be integer"
+    if isinstance(SIMD_out, float):
+        assert SIMD_out.is_integer(), "Output SIMD should be integer"
     SIMD_out = int(SIMD_out)
     in_channels_new = num_of_blocks * SIMD_out
     # channels_to_prune = math.floor(model.conv_features[conv_feature_index].in_channels * pruning_amount)

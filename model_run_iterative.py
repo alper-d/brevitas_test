@@ -7,6 +7,7 @@ import time
 # import qonnx.core.onnx_exec as oxe
 from imports_iterative import (
     log_to_file,
+    weight_histograms,
     start_log_to_file,
     save_best_checkpoint,
     export_best_onnx,
@@ -48,17 +49,17 @@ run_netron, pruning_mode, use_scheduler, model_identity, is_iterative, pretraine
 )
 
 
-def prune_and_train(steps):
+def prune_and_train(steps, epoch_list):
     model, _ = model_with_cfg(model_identity, pretrained=pretrained)
 
     pruner = IterativePruning(steps=steps)
-    epoch_list = [500, 500, 1000]
     for step_no, step in enumerate(steps):
         best_val_acc = 0
         iteration_path = os.path.join(path_for_save, f"step{step_no}")
         os.mkdir(iteration_path)
         file1 = start_log_to_file(iteration_path)
         model = pruner.iterate(model, pruning_mode, run_netron, iteration_path)
+        weight_histograms(model, iteration_path)
         criterion, optimizer = get_optimizer(model)
 
         eval_meters = EvalEpochMeters()

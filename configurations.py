@@ -57,7 +57,10 @@ path_for_save = os.path.join(sub_directory_to_save, now_str)
 logger = logging.getLogger("thesis")
 logger.warning(f"Logs will be saved into====> {path_for_save}")
 shutil.copy2("./configurations.py", path_for_save)
-shutil.copy2("./model_run.py", path_for_save)
+shutil.copy2(
+    "./model_run_iterative.py" if cmd_args["is_iterative"] else "./model_run.py",
+    path_for_save,
+)
 network = "cnv"
 experiments = "."
 datadir = "./data/"
