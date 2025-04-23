@@ -120,20 +120,27 @@ class CNV(Module):
 
 
 def cnv(cfg):
-    # def get_model_cfg(name):
-    #    cfg = ConfigParser()
-    #    current_dir = os.path.dirname(os.path.abspath(__file__))
-    #    config_path = os.path.join(current_dir, "..", "cfg", name.lower() + ".ini")
-    #    assert os.path.exists(config_path), f"{config_path} not found."
-    #    cfg.read(config_path)
-    #    return cfg
-    #
-    # cfg = get_model_cfg(cfg)
     weight_bit_width = cfg.getint("QUANT", "WEIGHT_BIT_WIDTH")
     act_bit_width = cfg.getint("QUANT", "ACT_BIT_WIDTH")
     in_bit_width = cfg.getint("QUANT", "IN_BIT_WIDTH")
     num_classes = cfg.getint("MODEL", "NUM_CLASSES")
     in_channels = cfg.getint("MODEL", "IN_CHANNELS")
+    net = CNV(
+        weight_bit_width=weight_bit_width,
+        act_bit_width=act_bit_width,
+        in_bit_width=in_bit_width,
+        num_classes=num_classes,
+        in_ch=in_channels,
+    )
+    return net
+
+def cnv_custom(cfg: dict):
+    print("aaaaaaaaaa")
+    weight_bit_width = cfg["WEIGHT_BIT_WIDTH"]
+    act_bit_width = cfg["ACT_BIT_WIDTH"]
+    in_bit_width = 8
+    num_classes = 10
+    in_channels = 3
     net = CNV(
         weight_bit_width=weight_bit_width,
         act_bit_width=act_bit_width,

@@ -5,6 +5,7 @@ from configparser import ConfigParser
 import os
 
 from torch import hub
+import torch
 
 __all__ = [
     "cnv_1w1a",
@@ -22,7 +23,7 @@ __all__ = [
     "model_with_cfg",
 ]
 
-from .CNV import cnv
+from .CNV import cnv, cnv_custom
 from .FC import fc
 from .resnet import quant_resnet18
 
@@ -39,15 +40,25 @@ def get_model_cfg(name):
 
 
 def model_with_cfg(name, pretrained):
-    cfg = get_model_cfg(name)
-    arch = cfg.get("MODEL", "ARCH")
-    model = model_impl[arch](cfg)
-    if pretrained:
-        checkpoint = cfg.get("MODEL", "PRETRAINED_URL")
-        state_dict = hub.load_state_dict_from_url(
-            checkpoint, progress=True, map_location="cpu"
-        )
-        model.load_state_dict(state_dict, strict=True)
+    try:
+        cfg = get_model_cfg(name)
+        arch = cfg.get("MODEL", "ARCH")
+        model = model_impl[arch](cfg)
+        if pretrained:
+                checkpoint = cfg.get("MODEL", "PRETRAINED_URL")
+                state_dict = hub.load_state_dict_from_url(
+                    checkpoint, progress=True, map_location="cpu"
+                )
+                model.load_state_dict(state_dict, strict=True)
+    except AssertionError:
+        cfg = {"WEIGHT_BIT_WIDTH": int(name.split("_")[1][0]), "ACT_BIT_WIDTH": int(name.split("_")[1][2])}
+        model = cnv_custom(cfg)
+        if pretrained:
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            model_dict = torch.load(os.path.join(current_dir, "pretrained_checkpoints", f"{name}.tar"), map_location="cpu")
+            model.load_state_dict(model_dict["state_dict"], strict=True)
+        return model, cfg
+
     return model, cfg
 
 
