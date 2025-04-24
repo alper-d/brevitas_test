@@ -44,7 +44,7 @@ now_time = datetime.datetime.now()
 now_str = now_time.strftime("%d_%b_%Y__%H_%M_%S")
 pruning_type = f"{cmd_args['pruning_mode']}_{cmd_args['model_identity']}"
 sub_directory_to_save = (
-    os.path.join("runs", pruning_type)
+    os.path.join("runs", "one_shot", pruning_type)
     if not cmd_args["is_iterative"]
     else os.path.join("runs", "iterative", pruning_type)
 )
@@ -74,7 +74,7 @@ weight_decay = 0
 random_seed = 1
 log_freq = 10
 epochs = 1000 if not cmd_args["is_iterative"] else 500
-num_classes, starting_epoch, best_val_acc = 10, 0, 0
+num_classes, starting_epoch = 10, 0
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

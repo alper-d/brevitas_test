@@ -38,7 +38,6 @@ from configurations import (
     lr_schedule_period,
     num_classes,
     starting_epoch,
-    best_val_acc,
     lr_schedule_ratio,
     get_scheduler,
 )
@@ -57,6 +56,7 @@ run_netron, pruning_mode, use_scheduler, model_identity, is_iterative, pretraine
 def prune_and_train():
     # model_blueprint = load_model("runs/SIMD_0.9_30_Mar_2025__19_10_52/extended_model_0_9_SIMD.onnx")
     build_dir = "models_folder"
+    best_val_acc = 0
     export_onnx_path = build_dir + "/end2end_cnv_w1a1_export_to_download.onnx"
     export_onnx_path2 = build_dir + "/checkpoint.tar"
     model_temp = ModelWrapper(export_onnx_path)
@@ -90,7 +90,6 @@ def prune_and_train():
         else None
     )
     model.to(device)
-    iters = len(train_loader)
     for epoch in range(starting_epoch, epochs):
         # Set to training mode
         model.train()
