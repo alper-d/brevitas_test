@@ -19,12 +19,17 @@ from configurations import (
     SqrHingeLoss,
     weight_decay,
     lr,
+    logger,
     lr_schedule_period,
     lr_schedule_ratio,
 )
+from models_folder.models import model_with_cfg
 
 example_inputs = torch.randn(1, 3, 32, 32)
 SIMD_LIST = [3, 32, 32, 32, 32, 32, 32, 32, 64]
+PE_LIST = [16, 32, 16, 16, 4, 1, 1, 1, 5]
+keep_weights_intact = True
+
 run_netron, pruning_mode, use_scheduler, model_identity, is_iterative, pretrained = (
     cmd_args["run_netron"],
     cmd_args["pruning_mode"],
@@ -33,7 +38,7 @@ run_netron, pruning_mode, use_scheduler, model_identity, is_iterative, pretraine
     cmd_args["is_iterative"],
     cmd_args["pretrained"],
 )
-
+updated_model, _ = model_with_cfg(model_identity, pretrained=pretrained)
 
 def disable_jit(func):
     def wrapper(*args, **kwargs):
@@ -111,6 +116,41 @@ def weight_histograms(model, folder_name):
     plt.savefig(f"./{folder_name}/weight_hist.png")
 
 
+def fix_pe_parameter(model, list_of_dicts, pruning_mode):
+    for layer_idx, layer in enumerate(conv_layer_traverse(model)):
+        cur_layer_dict = [i for i in list_of_dicts if i["pruned_layer_index"] == layer_idx]
+        if not len(cur_layer_dict) == 1:
+            continue
+        cur_layer_dict[0]["pruning_entities"]["out_channels_new"] = layer.out_channels
+
+    for dict_i, layer_dict in enumerate(list_of_dicts):
+        layer_idx = layer_dict["pruned_layer_index"]
+        prev_layer = [(index, i) for index, i in enumerate(list_of_dicts) if i["pruned_layer_index"] == layer_idx - 1]
+        if not len(prev_layer) == 1:
+           continue
+        prev_idx_in_dict, previous_layer = prev_layer[0]
+        pe_previous = PE_LIST[previous_layer["pruned_layer_index"]]
+        pruning_factor = float(previous_layer["pruning_entities"]["out_channels_old"] / previous_layer["pruning_entities"]["out_channels_new"])
+        channel_to_pe = int(previous_layer["pruning_entities"]["out_channels_old"] / pe_previous)
+        pe_new = pe_previous
+        try:
+            assert previous_layer["pruning_entities"]["out_channels_new"] % pe_previous == 0, f"PE should divide OFM for {previous_layer['pruned_layer_index']}"
+            if pruning_mode == "SIMD" and pruning_factor.is_integer():
+                pe_new = pe_previous / pruning_factor
+        except AssertionError:
+            if previous_layer["pruning_entities"]["out_channels_new"] % channel_to_pe == 0:
+                pe_new = previous_layer["pruning_entities"]["out_channels_new"] / channel_to_pe
+            else:
+                pe_new = 1
+                logger.warn("PE is set 1")
+        list_of_dicts[prev_idx_in_dict]["pruning_entities"]["PE_old"] = int(pe_previous)
+        list_of_dicts[prev_idx_in_dict]["pruning_entities"]["PE_new"] = int(pe_new)
+        if dict_i == len(list_of_dicts) - 1:
+            layer_dict["pruning_entities"]["PE_old"] = PE_LIST[layer_dict["pruned_layer_index"]]
+            layer_dict["pruning_entities"]["PE_new"] = PE_LIST[layer_dict["pruned_layer_index"]]
+    return list_of_dicts
+
+
 def prune_all_conv_layers(model, SIMD_list, NumColPruned=-1, pruning_mode="structured"):
     pruning_data = []
     for layer_idx, layer in enumerate(conv_layer_traverse(model)):
@@ -143,6 +183,7 @@ def prune_all_conv_layers(model, SIMD_list, NumColPruned=-1, pruning_mode="struc
                 "pruning_entities": pruning_entities,
             }
         )
+    fix_pe_parameter(model, pruning_data, pruning_mode)
     return pruning_data
 
 
@@ -165,6 +206,7 @@ def prune_brevitas_modelSIMD(
     model, layer_to_prune, SIMD_in=1, NumColPruned=-1, SIMD_out=-1
 ) -> dict:
     in_channels = layer_to_prune.in_channels
+    out_channels = layer_to_prune.out_channels
     assert in_channels % SIMD_in == 0, "SIMD must divide IFM Channels"
     num_of_blocks = int(in_channels / SIMD_in)
     if SIMD_out == -1:
@@ -190,11 +232,13 @@ def prune_brevitas_modelSIMD(
         idxs=channels_to_prune,
     )
     if dep_graph:
-        group.prune()
+        layer_to_prune.weight.data[:, channels_to_prune] *= 0
+        # group.prune()
     print(layer_to_prune.in_channels)
     return {
         "in_channels_old": in_channels,
         "in_channels_new": layer_to_prune.in_channels,
+        "out_channels_old": out_channels,
         "SIMD_in": SIMD_in,
         "SIMD_out": SIMD_out,
     }
@@ -226,13 +270,15 @@ def prune_brevitas_model(model, layer_to_prune, SIMD=1, NumColPruned=-1) -> dict
     # group2 = dep_graph.get_pruning_group(model.conv_features[15], tp.prune_conv_in_channels, idxs=[0])
     # print(group.details())
     if dep_graph:
-        group.prune()
+        layer_to_prune.weight.data[:, channels_to_prune] *= 0
+        #group.prune()
     # utils.draw_groups(dep_graph, 'groups')
     # utils.draw_dependency_graph(dep_graph, 'dep_graph')
     # utils.draw_computational_graph(dep_graph,'comp_graph')
     return {
         "in_channels_old": in_channels,
         "in_channels_new": layer_to_prune.in_channels,
+        "out_channels_old": layer_to_prune.out_channels,
         "SIMD_in": SIMD,
     }
 

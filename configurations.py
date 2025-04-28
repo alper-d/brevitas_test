@@ -21,7 +21,7 @@ def get_argparser():
     argparser.add_argument("--use_scheduler", type=bool, default=True, help="")
     argparser.add_argument("--model", type=str, default="cnv_1w1a", help="")
     argparser.add_argument("--iterative", action="store_true", help="")
-    argparser.add_argument("--pretrained", type=bool, default=True, help="")
+    argparser.add_argument("--pretrained", action='store_true', help="")
     argparser.add_argument(
         "--pruning_mode", type=str, default="structured", choices=["structured", "SIMD"]
     )
@@ -30,7 +30,7 @@ def get_argparser():
 
 argparser = get_argparser()
 # pruning_amount = argparser.pruning_amount
-pruning_amount = [0.7] * 1 + [0.7] * 3 + [0.7] * 4 + [0.7] * 1
+pruning_amount = [0.5] * 1 + [0.5] * 3 + [0.5] * 2
 cmd_args = {
     "run_netron": argparser.run_netron,
     "pruning_mode": argparser.pruning_mode,
