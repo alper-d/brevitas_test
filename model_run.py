@@ -11,10 +11,9 @@ from imports import (
     save_best_checkpoint,
     export_best_onnx,
     TrainingEpochMeters,
-    prune_wrapper,
+    OneShotPruning,
     EvalEpochMeters,
     eval_model,
-    weight_histograms,
 )
 from models_folder.models import model_with_cfg
 from qonnx.core.modelwrapper import ModelWrapper
@@ -62,7 +61,6 @@ def prune_and_train():
     model_temp = ModelWrapper(export_onnx_path)
     # model_temp2 = get_test_model_trained("CNV", 1, 1)
     model, _ = model_with_cfg(model_identity, pretrained=pretrained)
-
     # if os.path.exists(f"runs/{pruning_log_identity}/best_checkpoint.tar"):
     #    model_dict = torch.load(f"runs/{pruning_log_identity}/best_checkpoint.tar")
     #    model.load_state_dict(model_dict["state_dict"])
@@ -76,10 +74,11 @@ def prune_and_train():
     # package = torch.load(export_onnx_path2, map_location="cpu")
     # model_state_dict = package["state_dict"]
     # model.load_state_dict(model_state_dict)
-    model = prune_wrapper(
+    pruner = OneShotPruning()
+    model = pruner.prune_wrapper(
         model, pruning_amount, pruning_mode, run_netron, path_for_save
     )
-    weight_histograms(model, path_for_save)
+    pruner.weight_histograms(model, path_for_save)
     criterion, optimizer = get_optimizer(model)
     # model = CNV(10, WEIGHT_BIT_WIDTH, ACT_BIT_WIDTH, 8, 3).to(device=device)
 

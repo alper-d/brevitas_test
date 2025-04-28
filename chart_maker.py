@@ -51,7 +51,7 @@ def plot_graph(run_folder):
         plt.plot(train_logs[i])
 
     # Add labels and title
-    plt.title("Train")
+    plt.title("Train Accuracy")
     plt.xlabel("Epoch")
     plt.ylabel("Accuracy")
 
@@ -68,7 +68,7 @@ def plot_graph(run_folder):
         plt.plot(test_logs[i], marker="o")
 
     # Add labels and title
-    plt.title("Test")
+    plt.title("Test Accuracy")
     plt.xlabel("Epoch")
     plt.ylabel("Accuracy")
 
