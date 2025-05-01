@@ -21,9 +21,11 @@ __all__ = [
     "lfc_1w2a",
     "resnet18_4w4a",
     "model_with_cfg",
+    "extended_model_with_cfg",
 ]
 
 from .CNV import cnv, cnv_custom
+from .CNV_extended import cnv as cnv_extended, cnv_custom as cnv_custom_extended
 from .FC import fc
 from .resnet import quant_resnet18
 
@@ -38,7 +40,14 @@ def get_model_cfg(name):
     cfg.read(config_path)
     return cfg
 
-
+def extended_model_with_cfg(name, pretrained):
+    cfg = {"WEIGHT_BIT_WIDTH": int(name.split("_")[1][0]), "ACT_BIT_WIDTH": int(name.split("_")[1][2])}
+    model = cnv_custom_extended(cfg)
+    if pretrained:
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        model_dict = torch.load(os.path.join(current_dir, "pretrained_extended_model_checkpoints", f"{name}.tar"), map_location="cpu")
+        model.load_state_dict(model_dict["state_dict"], strict=True)
+    return model, cfg
 def model_with_cfg(name, pretrained):
     try:
         cfg = get_model_cfg(name)

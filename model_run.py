@@ -15,7 +15,7 @@ from imports import (
     EvalEpochMeters,
     eval_model,
 )
-from models_folder.models import model_with_cfg
+from models_folder.models import model_with_cfg, extended_model_with_cfg
 from qonnx.core.modelwrapper import ModelWrapper
 
 # import onnx.numpy_helper as numpy_helper
@@ -42,13 +42,14 @@ from configurations import (
 )
 from shutil import make_archive
 
-run_netron, pruning_mode, use_scheduler, model_identity, is_iterative, pretrained = (
+run_netron, pruning_mode, use_scheduler, model_identity, is_iterative, pretrained, is_extended = (
     cmd_args["run_netron"],
     cmd_args["pruning_mode"],
     cmd_args["use_scheduler"],
     cmd_args["model_identity"],
     cmd_args["is_iterative"],
     cmd_args["pretrained"],
+    cmd_args["is_extended"],
 )
 
 
@@ -60,7 +61,13 @@ def prune_and_train():
     export_onnx_path2 = build_dir + "/checkpoint.tar"
     model_temp = ModelWrapper(export_onnx_path)
     # model_temp2 = get_test_model_trained("CNV", 1, 1)
-    model, _ = model_with_cfg(model_identity, pretrained=pretrained)
+    if is_extended:
+        model, _ = extended_model_with_cfg(model_identity, False)
+        pruner = OneShotPruning(is_extended=is_extended)
+    else:
+        model, _ = model_with_cfg(model_identity, pretrained=pretrained)
+        pruner = OneShotPruning(is_extended=is_extended)
+
     # if os.path.exists(f"runs/{pruning_log_identity}/best_checkpoint.tar"):
     #    model_dict = torch.load(f"runs/{pruning_log_identity}/best_checkpoint.tar")
     #    model.load_state_dict(model_dict["state_dict"])
@@ -74,7 +81,7 @@ def prune_and_train():
     # package = torch.load(export_onnx_path2, map_location="cpu")
     # model_state_dict = package["state_dict"]
     # model.load_state_dict(model_state_dict)
-    pruner = OneShotPruning()
+
     model = pruner.prune_wrapper(
         model, pruning_amount, pruning_mode, run_netron, path_for_save
     )

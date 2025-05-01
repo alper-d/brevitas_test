@@ -26,12 +26,11 @@ CNV_OUT_CH_POOL = [
     (128, False),
     (256, False),
     (256, False),
-    (256, False),
-    (512, False),
-    (512, False),
+    (128, True),
+    (64, False),
 ]
-INTERMEDIATE_FC_FEATURES = [(512, 1024), (1024, 1024)]
-LAST_FC_IN_FEATURES = 1024
+INTERMEDIATE_FC_FEATURES = [(64, 64)]
+LAST_FC_IN_FEATURES = 64
 LAST_FC_PER_OUT_CH_SCALING = False
 POOL_SIZE = 2
 KERNEL_SIZE = 3
@@ -121,28 +120,11 @@ class CNV(Module):
 
     def forward(self, x):
         x = 2.0 * x - torch.tensor([1.0], device=x.device)
-        for i, mod in enumerate(self.conv_features):
-            # if isinstance(mod, MaxPool2d):
-            #    print(mod)
-            #    print(x.shape)
-            # if isinstance(mod, QuantConv2d):
-            #    print(mod)
-            #    print(x.shape)
-            try:
-                x = mod(x)
-            except Exception:
-                pass
-                # print(e)
-                # print("i --->", i)
-                # print(mod)
-                # print(x.shape)
-                # exit()
+        for mod in self.conv_features:
+            x = mod(x)
         x = x.view(x.shape[0], -1)
         for mod in self.linear_features:
-            # print(x.shape)
             x = mod(x)
-        # print(x.shape)
-        # exit()
         return x
 
 
@@ -152,6 +134,22 @@ def cnv(cfg):
     in_bit_width = cfg.getint("QUANT", "IN_BIT_WIDTH")
     num_classes = cfg.getint("MODEL", "NUM_CLASSES")
     in_channels = cfg.getint("MODEL", "IN_CHANNELS")
+    net = CNV(
+        weight_bit_width=weight_bit_width,
+        act_bit_width=act_bit_width,
+        in_bit_width=in_bit_width,
+        num_classes=num_classes,
+        in_ch=in_channels,
+    )
+    return net
+
+
+def cnv_custom(cfg: dict):
+    weight_bit_width = cfg["WEIGHT_BIT_WIDTH"]
+    act_bit_width = cfg["ACT_BIT_WIDTH"]
+    in_bit_width = 8
+    num_classes = 10
+    in_channels = 3
     net = CNV(
         weight_bit_width=weight_bit_width,
         act_bit_width=act_bit_width,

@@ -135,7 +135,6 @@ def cnv(cfg):
     return net
 
 def cnv_custom(cfg: dict):
-    print("aaaaaaaaaa")
     weight_bit_width = cfg["WEIGHT_BIT_WIDTH"]
     act_bit_width = cfg["ACT_BIT_WIDTH"]
     in_bit_width = 8

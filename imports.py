@@ -24,20 +24,21 @@ from configurations import (
     lr_schedule_period,
     lr_schedule_ratio,
 )
-from models_folder.models import model_with_cfg
+from models_folder.models import model_with_cfg, extended_model_with_cfg
 
 example_inputs = torch.randn(1, 3, 32, 32)
 SIMD_LIST = [3, 32, 32, 32, 32, 32, 32, 32, 64]
 PE_LIST = [16, 32, 16, 16, 4, 1, 1, 1, 5]
 keep_weights_intact = True
 
-run_netron, pruning_mode, use_scheduler, model_identity, is_iterative, pretrained = (
+run_netron, pruning_mode, use_scheduler, model_identity, is_iterative, pretrained, is_extended = (
     cmd_args["run_netron"],
     cmd_args["pruning_mode"],
     cmd_args["use_scheduler"],
     cmd_args["model_identity"],
     cmd_args["is_iterative"],
     cmd_args["pretrained"],
+    cmd_args["is_extended"],
 )
 
 
@@ -68,9 +69,12 @@ def disable_jit(func):
     return wrapper
 
 class OneShotPruning():
-    def __init__(self):
+    def __init__(self, is_extended):
         self.total_num_of_pruned_layers = 0
-        self.updated_model, _ = model_with_cfg(model_identity, pretrained=pretrained)
+        if is_extended:
+            self.updated_model, _ = extended_model_with_cfg(model_identity, False)
+        else:
+            self.updated_model, _ = model_with_cfg(model_identity, pretrained=pretrained)
     @disable_jit
     def prune_wrapper(self, model, pruning_amount, pruning_mode, run_netron, folder_name):
         onnx_path_extended = f"{folder_name}/extended_model"
