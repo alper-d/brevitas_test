@@ -70,11 +70,12 @@ def disable_jit(func):
 
 
 def weight_to_im2col(tensor):
-    return tensor.reshape(tensor.shape[0] * tensor.shape[1] * tensor.shape[2], -1)
+    out = tensor.reshape(tensor.shape[0], tensor.shape[1] * tensor.shape[2] * tensor.shape[3])
+    return out
 
 
-def im2col_to_weight(tensor, ifm_size, kernel_size=(3, 3)):
-    return tensor.reshape(ifm_size, kernel_size[0], kernel_size[1], -1).permute(3, 0, 1, 2)
+def im2col_to_weight(tensor, ofm_size, ifm_size, kernel_size=(3, 3)):
+    return tensor.reshape(ofm_size, ifm_size, kernel_size[0], kernel_size[1])
 
 
 class OneShotPruning():
@@ -224,21 +225,17 @@ class OneShotPruning():
 
     def sort_tensor(self, tensor, SIMD=32):
 
-        x = tensor.permute(1, 2, 3, 0)
-        xx = weight_to_im2col(x)
-        xx = xx.T
-        chunked_by_simd = xx.chunk((x.shape[0] * x.shape[1] * x.shape[2]) // SIMD, dim=1)
+        xx = weight_to_im2col(tensor)
+        chunked_by_simd = xx.chunk((tensor.shape[1] * tensor.shape[2] * tensor.shape[3]) // SIMD, dim=1)
         #out = xx.abs().sum(dim=1, keepdim=True)
         out = torch.tensor(list(map(lambda itm: itm.abs().sum().item(), chunked_by_simd)))
         sorted_indices = out.argsort(dim=0)
         return [i.item() for i in sorted_indices.squeeze()]
     def get_pruning_mask(self, cols_to_prune, weight_tensor):
         mask = torch.ones_like(weight_tensor)
-        x = mask.permute(1, 2, 3, 0)
-        xx = weight_to_im2col(x)
-        xx = xx.T
+        xx = weight_to_im2col(mask)
         xx[:, cols_to_prune] = 0
-        mask_unfolded = im2col_to_weight(xx, weight_tensor.shape[1], (3,3))
+        mask_unfolded = im2col_to_weight(xx, weight_tensor.shape[0], weight_tensor.shape[1], (3,3))
         weight_tensor[mask_unfolded == 0] *= 0
         return mask_unfolded, weight_tensor
     def get_layer_tensor(self, tensor):
