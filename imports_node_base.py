@@ -3,7 +3,7 @@ import json
 import brevitas.config as config
 from brevitas.nn import QuantConv2d
 import numpy as np
-
+import math
 # from brevitas.core.restrict_val import RestrictValueType
 import time
 import torch_pruning as tp
@@ -70,12 +70,14 @@ def disable_jit(func):
 
 
 def weight_to_im2col(tensor):
-    out = tensor.reshape(tensor.shape[0], tensor.shape[1] * tensor.shape[2] * tensor.shape[3])
+    out = np.transpose(tensor, (0, 2, 3, 1))
+    out = np.reshape(out, (tensor.shape[0], tensor.shape[1] * tensor.shape[2] * tensor.shape[3]))
     return out
 
 
 def im2col_to_weight(tensor, ofm_size, ifm_size, kernel_size=(3, 3)):
-    return tensor.reshape(ofm_size, ifm_size, kernel_size[0], kernel_size[1])
+    out = np.reshape(tensor, (ofm_size, kernel_size[0], kernel_size[1], ifm_size))
+    return np.transpose(out, (0, 3, 1, 2))
 
 
 class OneShotPruning():
@@ -231,10 +233,15 @@ class OneShotPruning():
         out = torch.tensor(list(map(lambda itm: itm.abs().sum().item(), chunked_by_simd)))
         sorted_indices = out.argsort(dim=0)
         return [i.item() for i in sorted_indices.squeeze()]
-    def get_pruning_mask(self, cols_to_prune, weight_tensor):
+    def get_pruning_mask(self, cols_to_prune, weight_tensor, SIMD=-1):
+        assert SIMD > 0, "Error"
         mask = torch.ones_like(weight_tensor)
         xx = weight_to_im2col(mask)
-        xx[:, cols_to_prune] = 0
+        prune_index_creator = [0 for i in range(xx.shape[1])]
+        for i in range(xx.shape[1]):
+            prune_index_creator[i] = True if math.floor(i / SIMD) in cols_to_prune else False
+
+        xx[:, prune_index_creator] = 0
         mask_unfolded = im2col_to_weight(xx, weight_tensor.shape[0], weight_tensor.shape[1], (3,3))
         weight_tensor[mask_unfolded == 0] *= 0
         return mask_unfolded, weight_tensor
@@ -295,7 +302,7 @@ class OneShotPruning():
         if isinstance(NumColPruned, float):
             NumColPruned = round(len(sorting_indices)*NumColPruned)
         cols_to_prune = sorting_indices[:NumColPruned]
-        mask_tensor, self.updated_model.conv_features[position].weight.data = self.get_pruning_mask(cols_to_prune, layer_to_prune.weight.data)
+        mask_tensor, self.updated_model.conv_features[position].weight.data = self.get_pruning_mask(cols_to_prune, layer_to_prune.weight.data, SIMD)
         self.updated_model.mask_dict[f"{position}"] = mask_tensor
         # self.updated_model.conv_features[position + self.total_num_of_pruned_layers].weight.data[:, channels_to_prune,:,:] *= 0
         #mask = torch.ones(in_channels, dtype=torch.int)
