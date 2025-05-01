@@ -5,7 +5,7 @@ import torch
 import time
 
 # import qonnx.core.onnx_exec as oxe
-from imports import (
+from imports_node_base import (
     log_to_file,
     start_log_to_file,
     save_best_checkpoint,
@@ -137,6 +137,7 @@ def prune_and_train():
             # log_str = f"Scheduler step. Next epoch(s) run with lr={scheduler.get_last_lr()}"
             # log_to_file(file1, log_str)
             model.clip_weights(-1, 1)
+            model.prune_after_backward()
 
             epoch_meters.batch_time.update(time.time() - start_batch)
             pred = output.data.argmax(1, keepdim=True)

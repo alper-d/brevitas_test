@@ -40,7 +40,7 @@ class CNV(Module):
 
         self.conv_features = ModuleList()
         self.linear_features = ModuleList()
-
+        self.mask_dict = {}
         self.conv_features.append(
             QuantIdentity(  # for Q1.7 input format
                 act_quant=CommonActQuant,
@@ -101,6 +101,11 @@ class CNV(Module):
             if isinstance(m, QuantConv2d) or isinstance(m, QuantLinear):
                 torch.nn.init.uniform_(m.weight.data, -1, 1)
 
+    def register_masks(self):
+        for key, value in self.mask_dict.items():
+            self.mask_dict[key] = self.register_buffer(f"mask_{key}", self.mask_dict[key])
+        print("x")
+
     def clip_weights(self, min_val, max_val):
         for mod in self.conv_features:
             if isinstance(mod, QuantConv2d):
@@ -109,6 +114,13 @@ class CNV(Module):
             if isinstance(mod, QuantLinear):
                 mod.weight.data.clamp_(min_val, max_val)
 
+    def prune_after_backward(self):
+        for i, mod in enumerate(self.conv_features):
+            if not getattr(self, f"mask_{i}", None) is None:
+                mask = getattr(self, f"mask_{i}", None)
+                mod.weight.data = torch.mul(mod.weight.data, mask)
+            else:
+                pass
     def forward(self, x):
         x = 2.0 * x - torch.tensor([1.0], device=x.device)
         for mod in self.conv_features:
