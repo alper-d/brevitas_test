@@ -105,6 +105,7 @@ def prune_and_train():
         start_data_loading = time.time()
 
         for i, data in enumerate(train_loader):
+            break
             input, target = data
             input = input.to(device, non_blocking=True)
             target = target.to(device, non_blocking=True)
@@ -131,13 +132,13 @@ def prune_and_train():
             loss = criterion(output, target_var)
 
             optimizer.zero_grad()
-            loss.backward()
+            #debug loss.backward()
             optimizer.step()
             # scheduler.step(epoch + i / iters)
             # log_str = f"Scheduler step. Next epoch(s) run with lr={scheduler.get_last_lr()}"
             # log_to_file(file1, log_str)
-            model.clip_weights(-1, 1)
-            model.prune_after_backward()
+            #model.clip_weights(-1, 1)
+            #debug model.prune_after_backward()
 
             epoch_meters.batch_time.update(time.time() - start_batch)
             pred = output.data.argmax(1, keepdim=True)
@@ -160,18 +161,25 @@ def prune_and_train():
         log_to_file(file1, log_str)
         # Perform eval
         with torch.no_grad():
-            top1avg, save_data_list = eval_model(
-                model, criterion, test_loader, num_classes, epoch, device
-            )
-        log_to_file(
-            file1,
-            f"Epoch {epoch} complete. Train  accuracy {str(eval_meters.top1.avg)}",
-        )
-        log_to_file(file1, f"Epoch {epoch} complete. Test accuracy {str(top1avg)}")
+            pass
+            #top1avg, save_data_list = eval_model(
+            #    model, criterion, test_loader, num_classes, epoch, device
+            #)
+        #log_to_file(
+        #    file1,
+        #    f"Epoch {epoch} complete. Train  accuracy {str(eval_meters.top1.avg)}",
+        #)
+        #log_to_file(file1, f"Epoch {epoch} complete. Test accuracy {str(top1avg)}")
+        top1avg = 99
         if top1avg >= best_val_acc:
             best_val_acc = top1avg
             best_path = os.path.join(f"{path_for_save}", "best_checkpoint.tar")
             save_best_checkpoint(model, optimizer, epoch, best_val_acc, best_path)
+            log_to_file(
+                file1,
+                f"Best checkpoint saved",
+            )
+            exit()
         else:
             pass
     log_to_file(file1, f"Training complete. Best val acc= {best_val_acc}")

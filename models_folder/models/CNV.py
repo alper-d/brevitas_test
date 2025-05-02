@@ -123,7 +123,12 @@ class CNV(Module):
                 pass
     def forward(self, x):
         x = 2.0 * x - torch.tensor([1.0], device=x.device)
-        for mod in self.conv_features:
+        for i, mod in enumerate(self.conv_features):
+            if not getattr(self, f"mask_{i}", None) is None:
+                mask = getattr(self, f"mask_{i}", None)
+                mod.weight.data = torch.mul(mod.weight.data, mask)
+            else:
+                pass
             x = mod(x)
         x = x.view(x.shape[0], -1)
         for mod in self.linear_features:
