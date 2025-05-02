@@ -118,7 +118,7 @@ class CNV(Module):
         for i, mod in enumerate(self.conv_features):
             if not getattr(self, f"mask_{i}", None) is None:
                 mask = getattr(self, f"mask_{i}", None)
-                mod.weight.data = torch.mul(mod.weight.data, mask)
+                mod.weight.data[mask == 0] = -1
             else:
                 pass
     def forward(self, x):
@@ -126,7 +126,7 @@ class CNV(Module):
         for i, mod in enumerate(self.conv_features):
             if not getattr(self, f"mask_{i}", None) is None:
                 mask = getattr(self, f"mask_{i}", None)
-                mod.weight.data = torch.mul(mod.weight.data, mask)
+                mod.weight.data[mask == 0] = -1
             else:
                 pass
             x = mod(x)
