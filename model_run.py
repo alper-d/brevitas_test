@@ -5,18 +5,7 @@ import torch
 import time
 
 # import qonnx.core.onnx_exec as oxe
-from imports_node_base import (
-    log_to_file,
-    weight_to_im2col,
-    im2col_to_weight,
-    start_log_to_file,
-    save_best_checkpoint,
-    export_best_onnx,
-    TrainingEpochMeters,
-    OneShotPruning,
-    EvalEpochMeters,
-    eval_model,
-)
+
 from models_folder.models import model_with_cfg, extended_model_with_cfg
 from qonnx.core.modelwrapper import ModelWrapper
 
@@ -44,7 +33,7 @@ from configurations import (
 )
 from shutil import make_archive
 
-run_netron, pruning_mode, use_scheduler, model_identity, is_iterative, pretrained, is_extended = (
+run_netron, pruning_mode, use_scheduler, model_identity, is_iterative, pretrained, is_extended, node_based = (
     cmd_args["run_netron"],
     cmd_args["pruning_mode"],
     cmd_args["use_scheduler"],
@@ -52,7 +41,32 @@ run_netron, pruning_mode, use_scheduler, model_identity, is_iterative, pretraine
     cmd_args["is_iterative"],
     cmd_args["pretrained"],
     cmd_args["is_extended"],
+    cmd_args["node_based"],
 )
+if node_based:
+    from imports_node_base import (
+        log_to_file,
+        weight_to_im2col,
+        im2col_to_weight,
+        start_log_to_file,
+        save_best_checkpoint,
+        export_best_onnx,
+        TrainingEpochMeters,
+        OneShotPruning,
+        EvalEpochMeters,
+        eval_model,
+    )
+else:
+    from imports import (
+        log_to_file,
+        start_log_to_file,
+        save_best_checkpoint,
+        export_best_onnx,
+        TrainingEpochMeters,
+        OneShotPruning,
+        EvalEpochMeters,
+        eval_model,
+    )
 
 
 def prune_and_train():

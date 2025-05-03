@@ -23,6 +23,7 @@ def get_argparser():
     argparser.add_argument("--iterative", action="store_true", help="")
     argparser.add_argument("--pretrained", action='store_true', help="")
     argparser.add_argument("--extended_model", action='store_true', help="")
+    argparser.add_argument("--node_based", action='store_true', help="")
     argparser.add_argument(
         "--pruning_mode", type=str, default="structured", choices=["structured", "SIMD"]
     )
@@ -40,6 +41,7 @@ cmd_args = {
     "is_iterative": argparser.iterative,
     "pretrained": argparser.pretrained,
     "is_extended": argparser.extended_model,
+    "node_based": argparser.node_based,
 }
 pretrained = argparser.pretrained
 now_time = datetime.datetime.now()
@@ -47,6 +49,8 @@ now_str = now_time.strftime("%d_%b_%Y__%H_%M_%S")
 pruning_type = f"{cmd_args['pruning_mode']}_{cmd_args['model_identity']}"
 if cmd_args["is_extended"]:
     sub_directory_to_save = os.path.join("runs", "extended_model", pruning_type)
+if cmd_args["node_based"]:
+    sub_directory_to_save = os.path.join("runs", "node_based", pruning_type)
 elif not cmd_args["is_iterative"]:
     sub_directory_to_save = os.path.join("runs", "one_shot", pruning_type)
 else:

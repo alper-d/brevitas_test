@@ -9,4 +9,6 @@
 source ~/.bashrc
 
 echo "Running"
+git checkout
+git log --oneline -n 10
 python wrapper.py --model cnv_1w1a --iterative
