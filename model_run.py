@@ -7,6 +7,8 @@ import time
 # import qonnx.core.onnx_exec as oxe
 from imports_node_base import (
     log_to_file,
+    weight_to_im2col,
+    im2col_to_weight,
     start_log_to_file,
     save_best_checkpoint,
     export_best_onnx,
@@ -105,7 +107,6 @@ def prune_and_train():
         start_data_loading = time.time()
 
         for i, data in enumerate(train_loader):
-            break
             input, target = data
             input = input.to(device, non_blocking=True)
             target = target.to(device, non_blocking=True)
@@ -132,13 +133,13 @@ def prune_and_train():
             loss = criterion(output, target_var)
 
             optimizer.zero_grad()
-            #debug loss.backward()
+            loss.backward()
             optimizer.step()
             # scheduler.step(epoch + i / iters)
             # log_str = f"Scheduler step. Next epoch(s) run with lr={scheduler.get_last_lr()}"
             # log_to_file(file1, log_str)
-            #model.clip_weights(-1, 1)
-            #debug model.prune_after_backward()
+            model.clip_weights(-1, 1)
+            model.prune_after_backward()
 
             epoch_meters.batch_time.update(time.time() - start_batch)
             pred = output.data.argmax(1, keepdim=True)
@@ -161,27 +162,19 @@ def prune_and_train():
         log_to_file(file1, log_str)
         # Perform eval
         with torch.no_grad():
-            pass
-            #top1avg, save_data_list = eval_model(
-            #    model, criterion, test_loader, num_classes, epoch, device
-            #)
-        #log_to_file(
-        #    file1,
-        #    f"Epoch {epoch} complete. Train  accuracy {str(eval_meters.top1.avg)}",
-        #)
-        #log_to_file(file1, f"Epoch {epoch} complete. Test accuracy {str(top1avg)}")
-        top1avg = 99
+            top1avg, save_data_list = eval_model(
+                model, criterion, test_loader, num_classes, epoch, device
+            )
+        log_to_file(
+            file1,
+            f"Epoch {epoch} complete. Train  accuracy {str(eval_meters.top1.avg)}",
+        )
+        log_to_file(file1, f"Epoch {epoch} complete. Test accuracy {str(top1avg)}")
         if top1avg >= best_val_acc:
             best_val_acc = top1avg
             best_path = os.path.join(f"{path_for_save}", "best_checkpoint.tar")
             save_best_checkpoint(model, optimizer, epoch, best_val_acc, best_path)
-            log_to_file(
-                file1,
-                f"Best checkpoint saved",
-            )
-            exit()
-        else:
-            pass
+            log_to_file(file1, "Best checkpoint saved")
     log_to_file(file1, f"Training complete. Best val acc= {best_val_acc}")
     # Define input shape
     example_inputs = torch.randn(1, 3, 32, 32)

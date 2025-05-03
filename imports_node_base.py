@@ -242,11 +242,8 @@ class OneShotPruning():
             prune_index_creator[i] = True if math.floor(i / SIMD) in cols_to_prune else False
 
         xx[:, prune_index_creator] = 0
-        #for i in range(xx.shape[1]):
-        #    xx[:, i] = 1 if prune_index_creator[i] else -1
-        mask_unfolded = im2col_to_weight(xx, weight_tensor.shape[0], weight_tensor.shape[1], (3,3))
-        # weight_tensor = mask_unfolded
-        weight_tensor[mask_unfolded == 0] = -1
+        mask_unfolded = im2col_to_weight(xx, weight_tensor.shape[0], weight_tensor.shape[1], (3, 3))
+        weight_tensor[mask_unfolded == 0] *= 0
         return mask_unfolded, weight_tensor
     def get_layer_tensor(self, tensor):
         x = tensor.permute(1, 0, 2, 3)
