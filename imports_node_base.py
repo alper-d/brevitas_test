@@ -29,7 +29,6 @@ from models_folder.models import model_with_cfg, extended_model_with_cfg
 example_inputs = torch.randn(1, 3, 32, 32)
 SIMD_LIST = [3, 32, 32, 32, 32, 32, 32, 32, 64]
 PE_LIST = [16, 32, 16, 16, 4, 1, 1, 1, 5]
-keep_weights_intact = True
 
 run_netron, pruning_mode, use_scheduler, model_identity, is_iterative, pretrained, is_extended = (
     cmd_args["run_netron"],

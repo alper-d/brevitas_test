@@ -29,7 +29,6 @@ from models_folder.models import model_with_cfg, extended_model_with_cfg
 example_inputs = torch.randn(1, 3, 32, 32)
 SIMD_LIST = [3, 32, 32, 32, 32, 32, 32, 32, 64]
 PE_LIST = [16, 32, 16, 16, 4, 1, 1, 1, 5]
-keep_weights_intact = True
 
 run_netron, pruning_mode, use_scheduler, model_identity, is_iterative, pretrained, is_extended = (
     cmd_args["run_netron"],
@@ -71,10 +70,10 @@ def disable_jit(func):
 class OneShotPruning():
     def __init__(self, is_extended):
         self.total_num_of_pruned_layers = 0
-        if is_extended:
-            self.updated_model, _ = extended_model_with_cfg(model_identity, False)
-        else:
-            self.updated_model, _ = model_with_cfg(model_identity, pretrained=pretrained)
+        #if is_extended:
+        #    self.updated_model, _ = extended_model_with_cfg(model_identity, False)
+        #else:
+        #    self.updated_model, _ = model_with_cfg(model_identity, pretrained=pretrained)
     @disable_jit
     def prune_wrapper(self, model, pruning_amount, pruning_mode, run_netron, folder_name):
         onnx_path_extended = f"{folder_name}/extended_model"
@@ -93,7 +92,7 @@ class OneShotPruning():
         )
         pruned_onnx_filename = f"{onnx_path_extended}_pruned"
         export_qonnx(
-            self.updated_model,
+            model,
             args=example_inputs.cpu(),
             export_path=f"{pruned_onnx_filename}.onnx",
             opset_version=13,
@@ -104,7 +103,7 @@ class OneShotPruning():
         with open(f"{pruned_onnx_filename}.json", "w") as fp:
             fp.write(json.dumps(pruning_data, indent=4, ensure_ascii=False))
         config.JIT_ENABLED = 1
-        return self.updated_model
+        return model
 
 
     def conv_layer_traverse(self, model):
@@ -295,13 +294,13 @@ class OneShotPruning():
         # group2 = dep_graph.get_pruning_group(model.conv_features[15], tp.prune_conv_in_channels, idxs=[0])
         # print(group.details())
         if dep_graph:
-            self.updated_model.conv_features[position + self.total_num_of_pruned_layers].weight.data[:, channels_to_prune,:,:] *= 0
+            #self.updated_model.conv_features[position + self.total_num_of_pruned_layers].weight.data[:, channels_to_prune,:,:] *= 0
             #mask = torch.ones(in_channels, dtype=torch.int)
             #mask[channels_to_prune] = 0
-            mask_layer = MaskedLayer(channels_to_prune)
-            self.updated_model.conv_features.insert(position + self.total_num_of_pruned_layers, mask_layer)
-            self.total_num_of_pruned_layers += 1
-            #group.prune()
+            #mask_layer = MaskedLayer(channels_to_prune)
+            #self.updated_model.conv_features.insert(position + self.total_num_of_pruned_layers, mask_layer)
+            #self.total_num_of_pruned_layers += 1
+            group.prune()
         # utils.draw_groups(dep_graph, 'groups')
         # utils.draw_dependency_graph(dep_graph, 'dep_graph')
         # utils.draw_computational_graph(dep_graph,'comp_graph')
