@@ -211,7 +211,7 @@ class OneShotPruning():
                 )
             else:
                 pruning_entities = self.prune_brevitas_modelSIMD(
-                    model, layer_to_prune=layer, SIMD_in=SIMD, NumColPruned=pruning_ratio
+                    model, layer_to_prune=layer, SIMD_in=SIMD, NumColPruned=pruning_ratio, position=position
                 )
             pruning_data.append(
                 {
@@ -244,6 +244,30 @@ class OneShotPruning():
         mask_unfolded = im2col_to_weight(xx.T, weight_tensor.shape[0], weight_tensor.shape[1], (3, 3))
         weight_tensor[mask_unfolded == 0] *= 0
         return mask_unfolded, weight_tensor
+
+    def sort_tensorSIMD(self, tensor, SIMD_in=-1):
+        xx = weight_to_im2col(tensor).T
+        chunked_by_simd = xx.chunk((tensor.shape[1] * tensor.shape[2] * tensor.shape[3]) // SIMD_in, dim=0)
+        #out = xx.abs().sum(dim=1, keepdim=True)
+        sorted_chunks = []
+        for chunk in chunked_by_simd:
+            sum_tensor = chunk.abs().sum(dim=1)
+            sorter_indices = sum_tensor.argsort(dim=0)
+            sorted_chunks.append(list(map(lambda x:x.item(), sorter_indices)))
+        return sorted_chunks
+    def get_pruning_maskSIMD(self, cols_to_prune, weight_tensor, SIMD_in=-1):
+        assert SIMD_in > 0, "Error"
+        mask = torch.ones_like(weight_tensor)
+        xx = weight_to_im2col(mask).T
+        prune_index_creator = [0 for i in range(xx.shape[0])]
+        for i in range(xx.shape[0]):
+            chunk_idx = math.floor(i / SIMD_in)
+            prune_index_creator[i] = True if i % SIMD_in in cols_to_prune[chunk_idx] else False
+
+        xx[prune_index_creator, :] = 0
+        mask_unfolded = im2col_to_weight(xx.T, weight_tensor.shape[0], weight_tensor.shape[1], (3, 3))
+        weight_tensor[mask_unfolded == 0] *= 0
+        return mask_unfolded, weight_tensor
     def get_layer_tensor(self, tensor):
         x = tensor.permute(1, 0, 2, 3)
         x = x.reshape(tensor.shape[1], -1)
@@ -252,7 +276,7 @@ class OneShotPruning():
 
 
     def prune_brevitas_modelSIMD(
-        self, model, layer_to_prune, SIMD_in=1, NumColPruned=-1, SIMD_out=-1
+        self, model, layer_to_prune, SIMD_in=1, NumColPruned=-1, SIMD_out=-1 , position=-1
     ) -> dict:
         in_channels = layer_to_prune.in_channels
         out_channels = layer_to_prune.out_channels
@@ -270,24 +294,17 @@ class OneShotPruning():
         SIMD_out = int(SIMD_out)
         in_channels_new = num_of_blocks * SIMD_out
         # channels_to_prune = math.floor(model.conv_features[conv_feature_index].in_channels * pruning_amount)
-        sorting_indices = self.sort_tensor(layer_to_prune.weight.data)
-        channels_to_prune = sorting_indices[: (-1) * in_channels_new]
-        dep_graph = tp.DependencyGraph().build_dependency(
-            model, example_inputs=example_inputs
-        )
-        group = dep_graph.get_pruning_group(
-            layer_to_prune,
-            tp.prune_conv_in_channels,
-            idxs=channels_to_prune,
-        )
-        if dep_graph:
-            layer_to_prune.weight.data[:, channels_to_prune] *= 0
-            # group.prune()
-        print(layer_to_prune.in_channels)
+        sorting_indices = self.sort_tensorSIMD(layer_to_prune.weight.data, SIMD_in=SIMD_in)
+        cols_to_prune = []
+        for chunk in sorting_indices:
+            cols_to_prune.append(chunk[: (-1) * SIMD_out])
+        mask_tensor, model.conv_features[position].weight.data = self.get_pruning_maskSIMD(cols_to_prune, layer_to_prune.weight.data, SIMD_in)
+        model.mask_dict[f"{position}"] = mask_tensor
         return {
             "in_channels_old": in_channels,
             "in_channels_new": layer_to_prune.in_channels,
             "out_channels_old": out_channels,
+            "cols_to_prune_SIMD": cols_to_prune,
             "SIMD_in": SIMD_in,
             "SIMD_out": SIMD_out,
         }
