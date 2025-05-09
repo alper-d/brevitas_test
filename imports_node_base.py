@@ -226,8 +226,8 @@ class OneShotPruning():
 
     def sort_tensor(self, tensor, SIMD=32):
 
-        xx = weight_to_im2col(tensor)
-        chunked_by_simd = xx.chunk((tensor.shape[1] * tensor.shape[2] * tensor.shape[3]) // SIMD, dim=1)
+        xx = weight_to_im2col(tensor).T
+        chunked_by_simd = xx.chunk((tensor.shape[1] * tensor.shape[2] * tensor.shape[3]) // SIMD, dim=0)
         #out = xx.abs().sum(dim=1, keepdim=True)
         out = torch.tensor(list(map(lambda itm: itm.abs().sum().item(), chunked_by_simd)))
         sorted_indices = out.argsort(dim=0)
@@ -235,13 +235,13 @@ class OneShotPruning():
     def get_pruning_mask(self, cols_to_prune, weight_tensor, SIMD=-1):
         assert SIMD > 0, "Error"
         mask = torch.ones_like(weight_tensor)
-        xx = weight_to_im2col(mask)
-        prune_index_creator = [0 for i in range(xx.shape[1])]
-        for i in range(xx.shape[1]):
+        xx = weight_to_im2col(mask).T
+        prune_index_creator = [0 for i in range(xx.shape[0])]
+        for i in range(xx.shape[0]):
             prune_index_creator[i] = True if math.floor(i / SIMD) in cols_to_prune else False
 
-        xx[:, prune_index_creator] = 0
-        mask_unfolded = im2col_to_weight(xx, weight_tensor.shape[0], weight_tensor.shape[1], (3, 3))
+        xx[prune_index_creator, :] = 0
+        mask_unfolded = im2col_to_weight(xx.T, weight_tensor.shape[0], weight_tensor.shape[1], (3, 3))
         weight_tensor[mask_unfolded == 0] *= 0
         return mask_unfolded, weight_tensor
     def get_layer_tensor(self, tensor):
