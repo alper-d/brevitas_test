@@ -66,6 +66,7 @@ def model_with_cfg(name, pretrained):
             current_dir = os.path.dirname(os.path.abspath(__file__))
             model_dict = torch.load(os.path.join(current_dir, "pretrained_checkpoints", f"{name}.tar"), map_location="cpu")
             model.load_state_dict(model_dict["state_dict"], strict=True)
+            print("loaded from ", os.path.join(current_dir, "pretrained_checkpoints", f"{name}.tar"))
         return model, cfg
 
     return model, cfg

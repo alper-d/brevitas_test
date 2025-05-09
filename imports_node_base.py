@@ -82,10 +82,10 @@ def im2col_to_weight(tensor, ofm_size, ifm_size, kernel_size=(3, 3)):
 class OneShotPruning():
     def __init__(self, is_extended):
         self.total_num_of_pruned_layers = 0
-        if is_extended:
-            self.updated_model, _ = extended_model_with_cfg(model_identity, False)
-        else:
-            self.updated_model, _ = model_with_cfg(model_identity, pretrained=pretrained)
+        #if is_extended:
+        #    self.updated_model, _ = extended_model_with_cfg(model_identity, False)
+        #else:
+        #    self.updated_model, _ = model_with_cfg(model_identity, pretrained=pretrained)
     @disable_jit
     def prune_wrapper(self, model, pruning_amount, pruning_mode, run_netron, folder_name):
         onnx_path_extended = f"{folder_name}/extended_model"
@@ -102,7 +102,7 @@ class OneShotPruning():
             NumColPruned=pruning_amount,
             pruning_mode=pruning_mode,
         )
-        self.updated_model.register_masks()
+        model.register_masks()
         pruned_onnx_filename = f"{onnx_path_extended}_pruned"
         # export_qonnx(
         #     self.updated_model,
@@ -116,7 +116,7 @@ class OneShotPruning():
         with open(f"{pruned_onnx_filename}.json", "w") as fp:
             fp.write(json.dumps(pruning_data, indent=4, ensure_ascii=False))
         config.JIT_ENABLED = 1
-        return self.updated_model
+        return model
 
 
     def conv_layer_traverse(self, model):
@@ -301,8 +301,8 @@ class OneShotPruning():
         if isinstance(NumColPruned, float):
             NumColPruned = round(len(sorting_indices)*NumColPruned)
         cols_to_prune = sorting_indices[:NumColPruned]
-        mask_tensor, self.updated_model.conv_features[position].weight.data = self.get_pruning_mask(cols_to_prune, layer_to_prune.weight.data, SIMD)
-        self.updated_model.mask_dict[f"{position}"] = mask_tensor
+        mask_tensor, model.conv_features[position].weight.data = self.get_pruning_mask(cols_to_prune, layer_to_prune.weight.data, SIMD)
+        model.mask_dict[f"{position}"] = mask_tensor
         # self.updated_model.conv_features[position + self.total_num_of_pruned_layers].weight.data[:, channels_to_prune,:,:] *= 0
         #mask = torch.ones(in_channels, dtype=torch.int)
         #mask[channels_to_prune] = 0
